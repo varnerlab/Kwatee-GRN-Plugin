@@ -120,9 +120,6 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         xml_buffer.append("\t\t</listOfTranslationReactions>\n");
         xml_buffer.append("\t\t<listOfSignalTransductionReactions>\n");
         xml_buffer.append(signal_transduction_buffer);
-        xml_buffer.append("\t\t</listOfSignalTransductionReactions>\n");
-        xml_buffer.append("\t\t<listOfSignalTransductionReactions>\n");
-        xml_buffer.append(signal_transduction_buffer);
         xml_buffer.append(mRNA_degradation_buffer);
         xml_buffer.append("\t\t</listOfSignalTransductionReactions>\n");
         xml_buffer.append("\t</listOfReactions>\n");
@@ -243,11 +240,14 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // grab the symbol -
             String mrna_symbol = (String)model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_MRNA_SYMBOL);
+            String raw_reaction_string = "degradation_"+mrna_symbol+": "+mrna_symbol+" = []";
 
             // write the buffer line -
             buffer.append("\t\t\t");
             buffer.append("<reaction name=\"degradation_");
             buffer.append(mrna_symbol);
+            buffer.append("\" raw_reaction_string=\"");
+            buffer.append(raw_reaction_string);
             buffer.append("\">\n");
 
             buffer.append("\t\t\t\t");
@@ -296,6 +296,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             // Get the reaction data -
             String reaction_name = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_NAME);
             String reverse_flag = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REVERSE);
+            String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_RAW_STRING);
             Vector<VLCGSignalTransductionProteinModel> reactant_model_vector = (Vector)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REACTANT_VECTOR);
             Vector<VLCGSignalTransductionProteinModel> product_model_vector = (Vector)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_PRODUCT_VECTOR);
 
@@ -303,8 +304,9 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append("\t\t\t");
             buffer.append("<reaction name=\"");
             buffer.append(reaction_name);
+            buffer.append("\" raw_reaction_string=\"");
+            buffer.append(raw_string);
             buffer.append("\">\n");
-
             buffer.append("\t\t\t\t");
             buffer.append("<listOfReactants>\n");
 
@@ -359,6 +361,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 buffer.append("\t\t\t");
                 buffer.append("<reaction name=\"");
                 buffer.append(reaction_name+"_reverse");
+                buffer.append("\" raw_reaction_string=\"");
+                buffer.append(raw_string);
                 buffer.append("\">\n");
 
                 buffer.append("\t\t\t\t");
@@ -438,6 +442,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append(model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_RIBOSOME_SYMBOL));
             buffer.append("\" name=\"");
             buffer.append(model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_REACTION_NAME));
+            buffer.append("\" raw_reaction_string=\"");
+            buffer.append(model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_REACTION_RAW_STRING));
             buffer.append("\"/>\n");
         }
 
@@ -469,6 +475,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append(model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_RNA_POLYMERASE_SYMBOL));
             buffer.append("\" name=\"");
             buffer.append(model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_REACTION_NAME));
+            buffer.append("\" raw_reaction_string=\"");
+            buffer.append(model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_REACTION_RAW_STRING));
             buffer.append("\"/>\n");
         }
 

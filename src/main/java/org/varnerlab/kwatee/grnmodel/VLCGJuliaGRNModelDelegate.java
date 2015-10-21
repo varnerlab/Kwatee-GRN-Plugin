@@ -3,6 +3,7 @@ package org.varnerlab.kwatee.grnmodel;
 import org.varnerlab.kwatee.foundation.VLCGCopyrightFactory;
 import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
 import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleControlLogicModel;
+import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleSpeciesModel;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -185,8 +186,121 @@ public class VLCGJuliaGRNModelDelegate {
             buffer.append("];\n");
         }
 
-        // last line -
         buffer.append("\n");
+        buffer.append("# Formulate the kinetic rate vector - \n");
+        buffer.append("rate_constant_array = data_dictionary[\"RATE_CONSTANT_ARRAY\"];\n");
+        buffer.append("saturation_constant_array = data_dictionary[\"SATURATION_CONSTANT_ARRAY\"];\n");
+        buffer.append("rate_vector = Float64[];\n");
+        buffer.append("\n");
+
+        // Get list of reaction names -
+        Vector<String> reaction_name_vector = model_tree.getListOfReactionNamesFromGRNModelTree();
+        Iterator<String> reaction_name_iterator = reaction_name_vector.iterator();
+        int reaction_counter = 1;
+        while (reaction_name_iterator.hasNext()){
+
+            // Get the reaction_name -
+            String reaction_name = reaction_name_iterator.next();
+
+            // Get comment for this reaction -
+            String comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
+
+            // set the rate constants -
+            buffer.append("# ");
+            buffer.append(reaction_counter);
+            buffer.append(" ");
+            buffer.append(comment);
+            buffer.append("\n");
+            buffer.append("tmp = rate_constant_array[");
+            buffer.append(reaction_counter);
+            buffer.append("]");
+
+            // Get the reactants for this reaction -
+            if (model_tree.isThisASignalTransductionReaction(reaction_name)){
+
+                // get the reactants -
+                Vector<VLCGSimpleSpeciesModel> species_model_vector = model_tree.getReactantsForSignalTransductionReactionWithName(reaction_name);
+                Iterator<VLCGSimpleSpeciesModel> species_model_iterator = species_model_vector.iterator();
+                while (species_model_iterator.hasNext()){
+
+                    // Get species model -
+                    VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
+
+                    // Get the index for this species_model -
+                    String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                    if (!symbol.equalsIgnoreCase("[]")){
+
+                        int species_index = species_symbol_vector.indexOf(symbol);
+
+                        // add the line -
+                        buffer.append("*(");
+                        buffer.append(symbol);
+                        buffer.append(")/(saturation_constant_array[");
+                        buffer.append(reaction_counter);
+                        buffer.append(",");
+                        buffer.append(species_index);
+                        buffer.append("] + ");
+                        buffer.append(symbol);
+                        buffer.append(")");
+
+                    }
+                }
+
+                // add ; and newline -
+                buffer.append(";\n");
+                buffer.append("push!(rate_vector,tmp);\n");
+                buffer.append("\n");
+            }
+            else if (model_tree.isThisAGeneExpressionReaction(reaction_name)){
+
+                // Get the reactants -
+                Vector<VLCGSimpleSpeciesModel> species_model_vector = model_tree.getReactantsForGeneExpressionReactionWithName(reaction_name);
+                Iterator<VLCGSimpleSpeciesModel> species_model_iterator = species_model_vector.iterator();
+                while (species_model_iterator.hasNext()){
+
+                    // Get species model -
+                    VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
+
+                    // Get the symbol -
+                    String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                    buffer.append("*");
+                    buffer.append(symbol);
+                }
+
+                // add ; and newline -
+                buffer.append(";\n");
+                buffer.append("push!(rate_vector,tmp);\n");
+                buffer.append("\n");
+            }
+            else if (model_tree.isThisATranslationReaction(reaction_name)){
+
+
+                // Get the reactants -
+                Vector<VLCGSimpleSpeciesModel> species_model_vector = model_tree.getReactantsForTranslationReactionWithName(reaction_name);
+                Iterator<VLCGSimpleSpeciesModel> species_model_iterator = species_model_vector.iterator();
+                while (species_model_iterator.hasNext()){
+
+                    // Get species model -
+                    VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
+
+                    // Get the symbol -
+                    String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                    buffer.append("*");
+                    buffer.append(symbol);
+                }
+
+                // add ; and newline -
+                buffer.append(";\n");
+                buffer.append("push!(rate_vector,tmp);\n");
+                buffer.append("\n");
+            }
+
+
+            // update the counter -
+            reaction_counter++;
+        }
+
+        // last line -
         buffer.append("# return the kinetics vector -\n");
         buffer.append("return rate_vector;\n");
         buffer.append("end\n");
@@ -359,9 +473,7 @@ public class VLCGJuliaGRNModelDelegate {
             buffer.append(");\t");
             buffer.append("#\t");
             buffer.append(species_index+1);
-            buffer.append("\t id:");
-            buffer.append(symbol);
-            buffer.append("\t symbol:");
+            buffer.append("\t");
             buffer.append(symbol);
             buffer.append("\n");
         }
@@ -369,12 +481,79 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("\n");
         buffer.append("# Formulate the rate constant array - \n");
         buffer.append("rate_constant_array = Float64[];\n");
+        Vector<String> reaction_name_list = model_tree.getListOfReactionNamesFromGRNModelTree();
+        Iterator<String> reaction_name_iterator = reaction_name_list.iterator();
+        int reaction_counter = 1;
+        while (reaction_name_iterator.hasNext()){
+
+            // get the reaction name -
+            String reaction_name = reaction_name_iterator.next();
+
+            // Get the comment for this reaction -
+            String comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
+
+            // write the line -
+            buffer.append("push!(rate_constant_array,0.0);\t# ");
+            buffer.append(reaction_counter);
+            buffer.append("\t");
+            buffer.append(comment);
+            buffer.append("\n");
+
+            // update the counter -
+            reaction_counter++;
+        }
         buffer.append("\n");
 
-        buffer.append("\n");
         buffer.append("# Formulate the saturation constant array - \n");
         buffer.append("saturation_constant_array = zeros(NREACTIONS,NSPECIES);\n");
-        buffer.append("\n");
+        reaction_name_iterator = reaction_name_list.iterator();
+        reaction_counter = 1;
+        while (reaction_name_iterator.hasNext()){
+
+            // Get the reaction name -
+            String reaction_name = (String) reaction_name_iterator.next();
+
+            // is this a signal transduction reaction?
+            if (model_tree.isThisASignalTransductionReaction(reaction_name)){
+
+                // Get the reaction comment string -
+                String comment_string = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
+
+                // ok, we have a signal transduction reaction -
+                // Get the reactants -
+                Vector<VLCGSimpleSpeciesModel> speciesModels = model_tree.getReactantsForSignalTransductionReactionWithName(reaction_name);
+                Iterator<VLCGSimpleSpeciesModel> species_iterator = speciesModels.iterator();
+                while (species_iterator.hasNext()){
+
+                    // model -
+                    VLCGSimpleSpeciesModel model = species_iterator.next();
+
+                    // Get the species_symbol -
+                    String species_symbol = (String)model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+
+                    // Get the index of this symbol -
+                    if (species_symbol.equalsIgnoreCase("[]") == false){
+
+                        // lookup the index -
+                        int species_index = species_symbol_vector.indexOf(species_symbol);
+
+                        // write the record -
+                        buffer.append("saturation_constant_array[");
+                        buffer.append(reaction_counter);
+                        buffer.append(",");
+                        buffer.append(species_index);
+                        buffer.append("] = 1.0;\t# ");
+                        buffer.append(comment_string);
+                        buffer.append("\t species: ");
+                        buffer.append(species_symbol);
+                        buffer.append("\n");
+                    }
+                }
+            }
+
+            // update -
+            reaction_counter++;
+        }
 
         buffer.append("\n");
         buffer.append("# Formulate control parameter array - \n");
@@ -382,8 +561,7 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("control_parameter_array = zeros(");
         buffer.append(number_of_control_terms);
         buffer.append(",2);\n");
-        Vector<String> reaction_name_list = model_tree.getListOfReactionNamesFromGRNModelTree();
-        Iterator reaction_name_iterator = reaction_name_list.iterator();
+        reaction_name_iterator = reaction_name_list.iterator();
         int control_index = 1;
         while (reaction_name_iterator.hasNext()) {
 

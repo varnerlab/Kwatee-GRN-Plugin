@@ -41,6 +41,7 @@ public class VLCGSignalTransductionReactionModel implements VLCGGRNModelComponen
     public static final String SIGNAL_TRANSDUCTION_REACTION_FORWARD = "FORWARD";
     public static final String SIGNAL_TRANSDUCTION_REACTION_REACTANT_VECTOR = "REACTANT_VECTOR";
     public static final String SIGNAL_TRANSDUCTION_REACTION_PRODUCT_VECTOR = "PRODUCT_VECTOR";
+    public static final String SIGNAL_TRANSDUCTION_REACTION_RAW_STRING = "raw_rxn_string";
 
     @Override
     public Object getModelComponent(String key) throws Exception {

@@ -36,6 +36,7 @@ public class VLCGTranslationReactionModel implements VLCGGRNModelComponent {
     public static final String TRANSLATION_MRNA_SYMBOL = "MRNA_SYMBOL";
     public static final String TRANSLATION_PROTEIN_SYMBOL = "PROTEIN_SYMBOL";
     public static final String TRANSLATION_RIBOSOME_SYMBOL = "RIBOSOME_SYMBOL";
+    public static final String TRANSLATION_REACTION_RAW_STRING = "raw_rxn_string";
 
     @Override
     public Object getModelComponent(String key) throws Exception {

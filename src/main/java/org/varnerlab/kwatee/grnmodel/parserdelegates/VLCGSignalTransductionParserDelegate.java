@@ -41,6 +41,9 @@ public class VLCGSignalTransductionParserDelegate implements VLCGParserHandlerDe
         // ok, create a model instance -
         _model = new VLCGSignalTransductionReactionModel();
 
+        // add the raw string -
+        _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_RAW_STRING,_formatReactionString(line));
+
         // Parse this line -
         StringTokenizer stringTokenizer = new StringTokenizer(line,",");
         int counter = 1;
@@ -82,5 +85,38 @@ public class VLCGSignalTransductionParserDelegate implements VLCGParserHandlerDe
 
         // return the model -
         return _model;
+    }
+
+    private String _formatReactionString(String line) throws Exception {
+
+        // method variables -
+        int counter = 1;
+        StringBuffer buffer = new StringBuffer();
+
+        // split around the ','
+        StringTokenizer stringTokenizer = new StringTokenizer(line,",");
+        while (stringTokenizer.hasMoreElements()){
+
+            // Get the token -
+            String token = (String)stringTokenizer.nextToken();
+
+            if (counter == 1){
+                buffer.append(token);
+                buffer.append(": ");
+            }
+            else if (counter == 2){
+                buffer.append(token);
+                buffer.append(" = ");
+            }
+            else if (counter == 3){
+                buffer.append(token);
+            }
+
+            // update the counter -
+            counter++;
+        }
+
+        // return the buffer -
+        return buffer.toString();
     }
 }

@@ -24,19 +24,16 @@ import java.util.Hashtable;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  * <p>
- * Created by jeffreyvarner on 10/19/15.
+ * Created by jeffreyvarner on 10/21/15.
  */
-public class VLCGGeneExpressionReactionModel implements VLCGGRNModelComponent {
+public class VLCGSimpleSpeciesModel implements VLCGGRNModelComponent {
 
     // instance variables -
     private Hashtable _reaction_component_table = new Hashtable();
 
     // hastable keys -
-    public static final String GENE_EXPRESSION_REACTION_NAME = "reaction_name";
-    public static final String GENE_EXPRESSION_GENE_SYMBOL = "GENE_SYMBOL";
-    public static final String GENE_EXPRESSION_MRNA_SYMBOL = "MRNA_SYMBOL";
-    public static final String GENE_EXPRESSION_RNA_POLYMERASE_SYMBOL = "RNAP_SYMBOL";
-    public static final String GENE_EXPRESSION_REACTION_RAW_STRING = "raw_rxn_string";
+    public static final String SPECIES_SYMBOL = "species_symbol";
+    public static final String SPECIES_COEFFICIENT = "species_coefficient";
 
     @Override
     public Object getModelComponent(String key) throws Exception {
@@ -55,15 +52,13 @@ public class VLCGGeneExpressionReactionModel implements VLCGGRNModelComponent {
             return;
         }
 
-        System.out.println("Setting key = "+key+" value = "+value);
-
         // store the reaction component -
         _reaction_component_table.put(key,value);
     }
-
 
     @Override
     public Object doExecute() throws Exception {
         return null;
     }
+
 }
