@@ -13,10 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.StringReader;
-import java.util.DoubleSummaryStatistics;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * Copyright (c) 2015 Varnerlab,
@@ -362,7 +359,47 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 buffer.append("<reaction name=\"");
                 buffer.append(reaction_name+"_reverse");
                 buffer.append("\" raw_reaction_string=\"");
-                buffer.append(raw_string);
+
+                // we need to redo the raw string ..
+                StringBuffer local_reaction_string_buffer = new StringBuffer();
+                StringTokenizer tokenizer = new StringTokenizer(raw_string," ");
+                String name = "";
+                String reactants = "";
+                String products = "";
+                String equals_sign = "";
+                int counter = 1;
+                while (tokenizer.hasMoreTokens()){
+
+                    String token = tokenizer.nextToken();
+
+                    if (counter == 1){
+                        name = token;
+                    }
+                    else if (counter == 2){
+                        reactants = token;
+                    }
+                    else if (counter == 3){
+                        equals_sign = token;
+                    }
+                    else if (counter == 4){
+                        products = token;
+                    }
+
+                    // update the counter -
+                    counter++;
+                }
+
+                local_reaction_string_buffer.append(name);
+                local_reaction_string_buffer.append(" ");
+                local_reaction_string_buffer.append(products);
+                local_reaction_string_buffer.append(" ");
+                local_reaction_string_buffer.append(equals_sign);
+                local_reaction_string_buffer.append(" ");
+                local_reaction_string_buffer.append(reactants);
+                local_reaction_string_buffer.append(" ");
+                local_reaction_string_buffer.append("(reverse)");
+
+                buffer.append(local_reaction_string_buffer.toString());
                 buffer.append("\">\n");
 
                 buffer.append("\t\t\t\t");
@@ -534,15 +571,47 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
         // ok, so when I get here, I have all the symbols - build the xml records -
         Iterator<String> symbol_iterator = symbol_vector.iterator();
+        Vector<String> tmp_species_vector = new Vector<String>();
         while (symbol_iterator.hasNext()){
 
             // Symbol -
             String protein_symbol = symbol_iterator.next();
 
-            // build the record -
-            buffer.append("\t\t<species id=\"");
-            buffer.append(protein_symbol);
-            buffer.append("\" species_type=\"PROTEIN\" initial_amount=\"0.0\"/>\n");
+            if (tmp_species_vector.contains(protein_symbol) == false){
+
+                // build the record -
+                buffer.append("\t\t<species id=\"");
+                buffer.append(protein_symbol);
+                buffer.append("\" species_type=\"PROTEIN\" initial_amount=\"0.0\"/>\n");
+
+                // add -
+                tmp_species_vector.addElement(protein_symbol);
+            }
+        }
+
+        // We need to get the list of proteins that are coming from translation -
+        String translation_class_name_key = _package_name_parser_delegate + ".VLCGTranslationParserDelegate";
+        Vector<VLCGGRNModelComponent> translation_vector = _model_component_table.get(Class.forName(translation_class_name_key));
+        Iterator<VLCGGRNModelComponent> translation_iterator = translation_vector.iterator();
+        while (translation_iterator.hasNext()) {
+
+            // Get the model component -
+            VLCGGRNModelComponent model_component = translation_iterator.next();
+
+            // Get the symbol -
+            String translation_product_symbol = (String)model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_PROTEIN_SYMBOL);
+
+
+            if (tmp_species_vector.contains(translation_product_symbol) == false){
+
+                // build the record -
+                buffer.append("\t\t<species id=\"");
+                buffer.append(translation_product_symbol);
+                buffer.append("\" species_type=\"PROTEIN\" initial_amount=\"0.0\"/>\n");
+
+                // add -
+                tmp_species_vector.addElement(translation_product_symbol);
+            }
         }
 
         // return -

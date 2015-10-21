@@ -68,6 +68,16 @@ public class VLCGWriteJuliaGRNModel implements VLCGOutputHandler {
         String fully_qualified_allosteric_control_path = _transformation_properties_tree.lookupKwateeControlFunctionFilePath();
         String control_buffer = _delegate_object.buildControlFunctionBuffer(model_wrapper,_transformation_properties_tree);
         write(fully_qualified_allosteric_control_path,control_buffer);
+
+        // Build the stoichiometric matrix -
+        int NUMBER_OF_SPECIES = (int)model_wrapper.getNumberOfSpeciesFromGRNModelTree();
+        int NUMBER_OF_RATES = (int)model_wrapper.getNumberOfReactionsFromGRNModelTree();
+
+        // Initialize the stoichiometric matrix -
+        String fully_qualified_stoichiometric_matrix_path = _transformation_properties_tree.lookupKwateeStoichiometricMatrixFilePath();
+        double[][] stoichiometric_matrix = new double[NUMBER_OF_SPECIES][NUMBER_OF_RATES];
+        _delegate_object.buildStoichiometricMatrix(stoichiometric_matrix,model_wrapper);
+        _writeStoichiometricMatrixToDisk(fully_qualified_stoichiometric_matrix_path, stoichiometric_matrix, model_wrapper);
     }
 
     @Override
@@ -90,6 +100,31 @@ public class VLCGWriteJuliaGRNModel implements VLCGOutputHandler {
 
         // Write buffer to file system and close writer
         writer.write(buffer);
+        writer.close();
+    }
+
+    private void _writeStoichiometricMatrixToDisk(String path,double[][] stoichiometric_matrix,VLCGGRNModelTreeWrapper model_wrapper) throws Exception {
+
+        // Method attribute -
+        StringBuffer buffer = new StringBuffer();
+
+        // Get the system dimension -
+        int NUMBER_OF_SPECIES = (int)model_wrapper.getNumberOfSpeciesFromGRNModelTree();
+        int NUMBER_OF_RATES = (int)model_wrapper.getNumberOfReactionsFromGRNModelTree();
+
+        for (int scounter=0;scounter<NUMBER_OF_SPECIES;scounter++) {
+            for (int rcounter=0;rcounter<NUMBER_OF_RATES;rcounter++) {
+                buffer.append(stoichiometric_matrix[scounter][rcounter]);
+                buffer.append("\t");
+            }
+            buffer.append("\n");
+        }
+
+        File oFile = new File(path);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(oFile));
+
+        // Write buffer to file system and close writer
+        writer.write(buffer.toString());
         writer.close();
     }
 }

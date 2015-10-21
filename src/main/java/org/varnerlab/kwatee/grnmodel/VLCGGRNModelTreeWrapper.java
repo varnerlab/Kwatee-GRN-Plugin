@@ -57,6 +57,32 @@ public class VLCGGRNModelTreeWrapper {
     }
 
 
+    public int getNumberOfSpeciesFromGRNModelTree() throws Exception {
+
+        // method variables -
+        int number_of_species = 0;
+
+        // get the number of species -
+        Vector<String> species_vector = getSpeciesSymbolsFromGRNModel();
+        number_of_species = species_vector.size();
+
+        // return -
+        return number_of_species;
+    }
+
+    public int getNumberOfReactionsFromGRNModelTree() throws Exception {
+
+        // method variables -
+        int number_of_reactions = 0;
+
+        // get the number of reactions -
+        Vector<String> reaction_vector = getListOfReactionNamesFromGRNModelTree();
+        number_of_reactions = reaction_vector.size();
+
+        // return -
+        return number_of_reactions;
+    }
+
     public Vector<VLCGSimpleSpeciesModel> getReactantsForReactionWithName(String reaction_name) throws Exception {
 
         // Method variables -
@@ -88,6 +114,37 @@ public class VLCGGRNModelTreeWrapper {
         return species_vector;
     }
 
+    public Vector<VLCGSimpleSpeciesModel> getProductsForReactionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        Vector<VLCGSimpleSpeciesModel> species_vector = new Vector<VLCGSimpleSpeciesModel>();
+
+        // xpath -
+        String xpath_string = ".//*[@name=\""+reaction_name+"\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        if (node_list.getLength()>1){
+            throw new Exception("Reaction names must be unique. The name "+reaction_name+" appears to point to multiple reactions");
+        }
+
+        // Get the reaction node -
+        Node reaction_node = node_list.item(0);
+
+        // check what type of reaction we have ...
+        if (reaction_node.getNodeName().equalsIgnoreCase("reaction") == true){
+            return getProductsForSignalTransductionReactionWithName(reaction_name);
+        }
+        else if (reaction_node.getNodeName().equalsIgnoreCase("gene_expression_reaction") == true){
+            return getProductsForGeneExpressionReactionWithName(reaction_name);
+        }
+        else if (reaction_node.getNodeName().equalsIgnoreCase("translation_reaction") == true){
+            return getProductsForTranslationReactionWithName(reaction_name);
+        }
+
+        // return -
+        return species_vector;
+    }
+
     public Vector<VLCGSimpleSpeciesModel> getReactantsForTranslationReactionWithName(String reaction_name) throws Exception {
 
         // Method variables -
@@ -107,6 +164,36 @@ public class VLCGGRNModelTreeWrapper {
         VLCGSimpleSpeciesModel mrna_model = new VLCGSimpleSpeciesModel();
         mrna_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,mrna_node.getNodeValue());
         mrna_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,"0.0");
+        species_vector.addElement(mrna_model);
+
+        VLCGSimpleSpeciesModel ribosome_model = new VLCGSimpleSpeciesModel();
+        ribosome_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,ribosome_node.getNodeValue());
+        ribosome_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,"0.0");
+        species_vector.addElement(ribosome_model);
+
+        // return -
+        return species_vector;
+    }
+
+    public Vector<VLCGSimpleSpeciesModel> getProductsForTranslationReactionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        Vector<VLCGSimpleSpeciesModel> species_vector = new Vector<VLCGSimpleSpeciesModel>();
+
+        // xpath -
+        String xpath_string = ".//translation_reaction[@name=\""+reaction_name+"\"]";
+        NodeList nodeList = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        Node translation_node = nodeList.item(0);
+
+        // Get data from node -
+        NamedNodeMap node_map = translation_node.getAttributes();
+        Node mrna_node = node_map.getNamedItem("protein_symbol");
+        Node ribosome_node = node_map.getNamedItem("ribosome_symbol");
+
+        // Create models for mRNA and ribosome -
+        VLCGSimpleSpeciesModel mrna_model = new VLCGSimpleSpeciesModel();
+        mrna_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,mrna_node.getNodeValue());
+        mrna_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,"1.0");
         species_vector.addElement(mrna_model);
 
         VLCGSimpleSpeciesModel ribosome_model = new VLCGSimpleSpeciesModel();
@@ -148,6 +235,36 @@ public class VLCGGRNModelTreeWrapper {
         return species_vector;
     }
 
+    public Vector<VLCGSimpleSpeciesModel> getProductsForGeneExpressionReactionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        Vector<VLCGSimpleSpeciesModel> species_vector = new Vector<VLCGSimpleSpeciesModel>();
+
+        // xpath -
+        String xpath_string = ".//gene_expression_reaction[@name=\""+reaction_name+"\"]";
+        NodeList nodeList = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        Node translation_node = nodeList.item(0);
+
+        // Get data from node -
+        NamedNodeMap node_map = translation_node.getAttributes();
+        Node gene_node = node_map.getNamedItem("mrna_symbol");
+        Node rnap_node = node_map.getNamedItem("rnap_symbol");
+
+        // Create models for mRNA and ribosome -
+        VLCGSimpleSpeciesModel gene_model = new VLCGSimpleSpeciesModel();
+        gene_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,gene_node.getNodeValue());
+        gene_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,"1.0");
+        species_vector.addElement(gene_model);
+
+        VLCGSimpleSpeciesModel rnap_model = new VLCGSimpleSpeciesModel();
+        rnap_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,rnap_node.getNodeValue());
+        rnap_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,"0.0");
+        species_vector.addElement(rnap_model);
+
+        // return -
+        return species_vector;
+    }
+
     public Vector<VLCGSimpleSpeciesModel> getReactantsForSignalTransductionReactionWithName(String reaction_name) throws Exception {
 
         // Method variables -
@@ -155,6 +272,37 @@ public class VLCGGRNModelTreeWrapper {
 
         // xpath -
         String xpath_string = ".//reaction[@name=\""+reaction_name+"\"]/listOfReactants/speciesReference";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // create the list of species models -
+        int number_of_species = node_list.getLength();
+        for (int species_index = 0;species_index<number_of_species;species_index++){
+
+            // Get the data -
+            NamedNodeMap namedNodeMap = node_list.item(species_index).getAttributes();
+            Node species_node = namedNodeMap.getNamedItem("species");
+            Node coefficient_node = namedNodeMap.getNamedItem("stoichiometric_coefficient");
+
+            // Create the model -
+            VLCGSimpleSpeciesModel species_model = new VLCGSimpleSpeciesModel();
+            species_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL,species_node.getNodeValue());
+            species_model.setModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT,coefficient_node.getNodeValue());
+
+            // cache -
+            species_vector.addElement(species_model);
+        }
+
+        // return -
+        return species_vector;
+    }
+
+    public Vector<VLCGSimpleSpeciesModel> getProductsForSignalTransductionReactionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        Vector<VLCGSimpleSpeciesModel> species_vector = new Vector<VLCGSimpleSpeciesModel>();
+
+        // xpath -
+        String xpath_string = ".//reaction[@name=\""+reaction_name+"\"]/listOfProducts/speciesReference";
         NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
 
         // create the list of species models -

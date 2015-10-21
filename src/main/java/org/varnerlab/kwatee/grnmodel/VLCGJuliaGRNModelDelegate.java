@@ -51,6 +51,89 @@ public class VLCGJuliaGRNModelDelegate {
     }
 
 
+    public void buildStoichiometricMatrix(double[][] dblSTMatrix,VLCGGRNModelTreeWrapper model_wrapper) throws Exception {
+
+        // Get the dimension of the system -
+        int NUMBER_OF_SPECIES = 0;
+        int NUMBER_OF_RATES = 0;
+
+        // Get the system dimension -
+        NUMBER_OF_SPECIES = (int)model_wrapper.getNumberOfSpeciesFromGRNModelTree();
+        NUMBER_OF_RATES = (int)model_wrapper.getNumberOfReactionsFromGRNModelTree();
+
+        // Go through and put everything as zeros by default -
+        for (int scounter = 0;scounter<NUMBER_OF_SPECIES;scounter++) {
+            for (int rcounter = 0;rcounter<NUMBER_OF_RATES;rcounter++) {
+                dblSTMatrix[scounter][rcounter] = 0.0;
+            }
+        }
+
+        // Get the list of species -
+        Vector<String> species_vector = model_wrapper.getSpeciesSymbolsFromGRNModel();
+        Vector<String> reaction_vector = model_wrapper.getListOfReactionNamesFromGRNModelTree();
+        Iterator<String> species_iterator = species_vector.iterator();
+        Iterator<String> reaction_iterator = reaction_vector.iterator();
+        int reaction_index = 0;
+        while (reaction_iterator.hasNext()){
+
+            // Get the reaction name -
+            String reaction_name = reaction_iterator.next();
+
+            // what are the reactants for this reaction -
+            Vector<VLCGSimpleSpeciesModel> reactant_species_model_vector = model_wrapper.getReactantsForReactionWithName(reaction_name);
+            Vector<VLCGSimpleSpeciesModel> product_species_model_vector = model_wrapper.getProductsForReactionWithName(reaction_name);
+
+            // process the reactants -
+            Iterator<VLCGSimpleSpeciesModel> reactant_iterator = reactant_species_model_vector.iterator();
+            while (reactant_iterator.hasNext()){
+
+                // Get the species model -
+                VLCGSimpleSpeciesModel species_model = reactant_iterator.next();
+
+                // Get the data from the model -
+                String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                String coefficient = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT);
+
+
+                if (!symbol.equalsIgnoreCase("[]")){
+
+                    System.out.println("Processing "+reaction_name+" species = "+symbol);
+
+                    // lookup the species index -
+                    int species_index = species_vector.indexOf(symbol);
+                    dblSTMatrix[species_index][reaction_index] = Double.parseDouble(coefficient);
+
+                }
+            }
+
+            // process the products -
+            Iterator<VLCGSimpleSpeciesModel> product_iterator = product_species_model_vector.iterator();
+            while (product_iterator.hasNext()){
+
+                // Get the species model -
+                VLCGSimpleSpeciesModel species_model = product_iterator.next();
+
+                // Get the data from the model -
+                String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                String coefficient = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_COEFFICIENT);
+
+
+
+                if (!symbol.equalsIgnoreCase("[]")){
+
+                    System.out.println("Processing "+reaction_name+" species = "+symbol);
+
+                    // lookup the species index -
+                    int species_index = species_vector.indexOf(symbol);
+                    dblSTMatrix[species_index][reaction_index] = Double.parseDouble(coefficient);
+                }
+            }
+
+            // update the reaction counter -
+            reaction_index++;
+        }
+    }
+
     public String buildDriverFunctionBuffer(VLCGGRNModelTreeWrapper model_tree, VLCGTransformationPropertyTree property_tree) throws Exception {
 
         // String buffer -
@@ -238,7 +321,7 @@ public class VLCGJuliaGRNModelDelegate {
                         buffer.append(")/(saturation_constant_array[");
                         buffer.append(reaction_counter);
                         buffer.append(",");
-                        buffer.append(species_index);
+                        buffer.append(species_index+1);
                         buffer.append("] + ");
                         buffer.append(symbol);
                         buffer.append(")");
@@ -541,7 +624,7 @@ public class VLCGJuliaGRNModelDelegate {
                         buffer.append("saturation_constant_array[");
                         buffer.append(reaction_counter);
                         buffer.append(",");
-                        buffer.append(species_index);
+                        buffer.append(species_index+1);
                         buffer.append("] = 1.0;\t# ");
                         buffer.append(comment_string);
                         buffer.append("\t species: ");
