@@ -1,6 +1,8 @@
 package org.varnerlab.kwatee.grnmodel;
 
+import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleControlLogicModel;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -54,6 +56,23 @@ public class VLCGGRNModelTreeWrapper {
 
 
 
+    public boolean isThisReactionRegulated(String reaction_name) throws Exception {
+
+        // method variables -
+        boolean return_flag = false;
+
+        // ok, check - do we have a control statement with this reaction name as the target?
+        String xpath_string = ".//control[@control_target=\""+reaction_name+"\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        if (node_list.getLength()>0){
+            return_flag = true;
+        }
+
+        // return -
+        return return_flag;
+    }
+
     public String getInitialAmountForSpeciesWithSymbol(String symbol) throws Exception {
 
         // Get the species from the model list -
@@ -61,6 +80,57 @@ public class VLCGGRNModelTreeWrapper {
         return _lookupPropertyValueFromTreeUsingXPath(xpath_string);
     }
 
+    public int calculateTheTotalNumberOfControlTerms() throws Exception {
+
+        // method variables -
+        int number_of_control_terms = 0;
+
+        String xpath_string = ".//control/@control_name";
+        NodeList nodeList = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        number_of_control_terms = nodeList.getLength();
+
+        // return -
+        return number_of_control_terms;
+    }
+
+
+    public Vector<VLCGSimpleControlLogicModel> getControlModelListFromGRNModelTreeForReactionWithName(String reaction_name) throws Exception {
+
+        // method variables -
+        Vector<VLCGSimpleControlLogicModel> control_vector = new Vector<VLCGSimpleControlLogicModel>();
+
+        // ok, check - do we have a control statement with this reaction name as the target?
+        String xpath_string = ".//control[@control_target=\""+reaction_name+"\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        int number_of_transfer_functions = node_list.getLength();
+        for (int transfer_function_index = 0;transfer_function_index<number_of_transfer_functions;transfer_function_index++){
+
+            // Get the node -
+            Node control_node = node_list.item(transfer_function_index);
+
+            // Get the data from this node -
+            NamedNodeMap attribute_map = control_node.getAttributes();
+            Node type_node = attribute_map.getNamedItem("control_type");
+            Node actor_node = attribute_map.getNamedItem("control_actor");
+            Node name_node = attribute_map.getNamedItem("control_name");
+
+            // Create a comment -
+            String comment = name_node.getNodeValue()+" target: "+reaction_name+" actor: "+actor_node.getNodeValue()+" type: "+type_node.getNodeValue();
+
+            // Build the wrapper -
+            VLCGSimpleControlLogicModel transfer_function_model = new VLCGSimpleControlLogicModel();
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_ACTOR,actor_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_TARGET,reaction_name);
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_TYPE,type_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_NAME,name_node.getNodeValue());
+            transfer_function_model.setModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT,comment);
+
+            // add to the vector -
+            control_vector.addElement(transfer_function_model);
+        }
+
+        return control_vector;
+    }
 
     public Vector<String> getSpeciesSymbolsFromGRNModel() throws Exception {
 
@@ -99,7 +169,42 @@ public class VLCGGRNModelTreeWrapper {
 
             // Grab the node value -
             String node_value = node_list.item(node_index).getNodeValue();
-            name_vector.addElement(node_value);
+
+            if (name_vector.contains(node_value) == false){
+                name_vector.addElement(node_value);
+            }
+        }
+
+        // We also need to get all the gene expression reactions!
+        String gene_expression_xpath_string = ".//gene_expression_reaction/@name";
+        node_list = _lookupPropertyCollectionFromTreeUsingXPath(gene_expression_xpath_string);
+
+        // ok, so we need to grab the node values, and return the string symbols
+        number_of_nodes = node_list.getLength();
+        for (int node_index = 0;node_index<number_of_nodes;node_index++){
+
+            // Grab the node value -
+            String node_value = node_list.item(node_index).getNodeValue();
+
+            if (name_vector.contains(node_value) == false){
+                name_vector.addElement(node_value);
+            }
+        }
+
+        // We also need to get all the gene expression reactions!
+        String translation_xpath_string = ".//translation_reaction/@name";
+        node_list = _lookupPropertyCollectionFromTreeUsingXPath(translation_xpath_string);
+
+        // ok, so we need to grab the node values, and return the string symbols
+        number_of_nodes = node_list.getLength();
+        for (int node_index = 0;node_index<number_of_nodes;node_index++){
+
+            // Grab the node value -
+            String node_value = node_list.item(node_index).getNodeValue();
+
+            if (name_vector.contains(node_value) == false){
+                name_vector.addElement(node_value);
+            }
         }
 
         // return -

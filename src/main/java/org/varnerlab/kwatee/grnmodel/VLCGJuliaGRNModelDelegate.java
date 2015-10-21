@@ -2,6 +2,7 @@ package org.varnerlab.kwatee.grnmodel;
 
 import org.varnerlab.kwatee.foundation.VLCGCopyrightFactory;
 import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
+import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleControlLogicModel;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -366,6 +367,66 @@ public class VLCGJuliaGRNModelDelegate {
         }
 
         buffer.append("\n");
+        buffer.append("# Formulate the rate constant array - \n");
+        buffer.append("rate_constant_array = Float64[];\n");
+        buffer.append("\n");
+
+        buffer.append("\n");
+        buffer.append("# Formulate the saturation constant array - \n");
+        buffer.append("saturation_constant_array = zeros(NREACTIONS,NSPECIES);\n");
+        buffer.append("\n");
+
+        buffer.append("\n");
+        buffer.append("# Formulate control parameter array - \n");
+        int number_of_control_terms = model_tree.calculateTheTotalNumberOfControlTerms();
+        buffer.append("control_parameter_array = zeros(");
+        buffer.append(number_of_control_terms);
+        buffer.append(",2);\n");
+        Vector<String> reaction_name_list = model_tree.getListOfReactionNamesFromGRNModelTree();
+        Iterator reaction_name_iterator = reaction_name_list.iterator();
+        int control_index = 1;
+        while (reaction_name_iterator.hasNext()) {
+
+            // Get the reaction name -
+            String reaction_name = (String) reaction_name_iterator.next();
+
+            if (model_tree.isThisReactionRegulated(reaction_name)) {
+
+                // Get the vector of transfer function wrappers -
+                Vector<VLCGSimpleControlLogicModel> control_model_vector = model_tree.getControlModelListFromGRNModelTreeForReactionWithName(reaction_name);
+                Iterator<VLCGSimpleControlLogicModel> control_iterator = control_model_vector.iterator();
+                while (control_iterator.hasNext()) {
+
+                    // Get the comment from tghe control model
+                    VLCGSimpleControlLogicModel control_model = control_iterator.next();
+                    String comment = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
+
+                    // write the gain line -
+                    buffer.append("control_parameter_array[");
+                    buffer.append(control_index);
+                    buffer.append(",1] = 0.1;\t#\t");
+                    buffer.append(control_index);
+                    buffer.append(" Gain: \t");
+                    buffer.append(comment);
+                    buffer.append("\n");
+
+                    // write the order line -
+                    buffer.append("control_parameter_array[");
+                    buffer.append(control_index);
+                    buffer.append(",2] = 1.0;\t#\t");
+                    buffer.append(control_index);
+                    buffer.append(" Order: \t");
+                    buffer.append(comment);
+                    buffer.append("\n");
+
+                    // update counter -
+                    control_index++;
+                }
+            }
+        }
+
+
+        buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
         buffer.append("data_dictionary = Dict();\n");
         buffer.append("data_dictionary[\"STOICHIOMETRIC_MATRIX\"] = S;\n");
@@ -429,13 +490,113 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("control_parameter_array = data_dictionary[\"CONTROL_PARAMETER_ARRAY\"];\n");
         buffer.append("\n");
 
+        buffer.append("# Alias the species vector - \n");
+        Vector<String> listOfSpecies = model_tree.getSpeciesSymbolsFromGRNModel();
+        int number_of_species = listOfSpecies.size();
+        for (int species_index = 0;species_index<number_of_species;species_index++){
+
+            // Get the symbol -
+            String species_symbol = listOfSpecies.get(species_index);
+
+            // write the symbol =
+            buffer.append(species_symbol);
+            buffer.append(" = x[");
+            buffer.append(species_index + 1);
+            buffer.append("];\n");
+        }
+        buffer.append("\n");
+
         Vector<String> reaction_name_list = model_tree.getListOfReactionNamesFromGRNModelTree();
         Iterator reaction_name_iterator = reaction_name_list.iterator();
+        int reaction_index = 1;
+        int control_index = 1;
         while (reaction_name_iterator.hasNext()){
 
             // Get the reaction name -
             String reaction_name = (String)reaction_name_iterator.next();
 
+            System.out.println("Checking - "+reaction_name);
+
+            // is this reaction regulated?
+            if (model_tree.isThisReactionRegulated(reaction_name)) {
+
+                // ok, we have a regulation term for this reaction
+                buffer.append("# ----------------------------------------------------------------------------------- #\n");
+                buffer.append("transfer_function_vector = Float64[];\n");
+
+                // Get the vector of transfer function wrappers -
+                Vector<VLCGSimpleControlLogicModel> control_model_vector = model_tree.getControlModelListFromGRNModelTreeForReactionWithName(reaction_name);
+                Iterator<VLCGSimpleControlLogicModel> control_iterator = control_model_vector.iterator();
+                while (control_iterator.hasNext()){
+
+                    // Get the control model -
+                    VLCGSimpleControlLogicModel control_model = control_iterator.next();
+
+                    // Get the comment -
+                    String comment = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
+                    buffer.append("# ");
+                    buffer.append(comment);
+                    buffer.append("\n");
+
+
+                    // Get the data from the model -
+                    String actor = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_ACTOR);
+                    String type = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_TYPE);
+
+                    // Check the type -
+                    if (type.equalsIgnoreCase("repression") || type.equalsIgnoreCase("inhibition")){
+
+                        // write -
+                        buffer.append("push!(transfer_function_vector,1.0 - (control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*");
+                        buffer.append(actor);
+                        buffer.append("^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2])/(1+");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*");
+                        buffer.append(actor);
+                        buffer.append("^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]));\n");
+
+                    }
+                    else {
+
+                        // write -
+                        buffer.append("push!(transfer_function_vector,(control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*");
+                        buffer.append(actor);
+                        buffer.append("^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2])/(1+");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*");
+                        buffer.append(actor);
+                        buffer.append("^control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]));\n");
+                    }
+
+                    // update control_index -
+                    control_index++;
+                }
+
+                // integrate the transfer functions -
+                buffer.append("control_vector[");
+                buffer.append(reaction_index);
+                buffer.append("] = mean(transfer_function_vector);\n");
+                buffer.append("transfer_function_vector = 0;\n");
+                buffer.append("# ----------------------------------------------------------------------------------- #\n");
+                buffer.append("\n");
+            }
+
+            // update the counter -
+            reaction_index++;
         }
 
         buffer.append("# Modify the rate_vector with the control variables - \n");
