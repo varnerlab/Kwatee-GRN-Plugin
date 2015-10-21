@@ -84,6 +84,28 @@ public class VLCGGRNModelTreeWrapper {
         return species_vector;
     }
 
+    public Vector<String> getListOfReactionNamesFromGRNModelTree() throws Exception {
+
+        // method variables -
+        Vector<String> name_vector = new Vector<String>();
+
+        // Get reaction names -
+        String xpath_string = ".//reaction/@name";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // ok, so we need to grab the node values, and return the string symbols
+        int number_of_nodes = node_list.getLength();
+        for (int node_index = 0;node_index<number_of_nodes;node_index++){
+
+            // Grab the node value -
+            String node_value = node_list.item(node_index).getNodeValue();
+            name_vector.addElement(node_value);
+        }
+
+        // return -
+        return name_vector;
+    }
+
 
     private NodeList _lookupPropertyCollectionFromTreeUsingXPath(String xpath_string) throws Exception {
 

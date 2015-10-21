@@ -429,6 +429,15 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("control_parameter_array = data_dictionary[\"CONTROL_PARAMETER_ARRAY\"];\n");
         buffer.append("\n");
 
+        Vector<String> reaction_name_list = model_tree.getListOfReactionNamesFromGRNModelTree();
+        Iterator reaction_name_iterator = reaction_name_list.iterator();
+        while (reaction_name_iterator.hasNext()){
+
+            // Get the reaction name -
+            String reaction_name = (String)reaction_name_iterator.next();
+
+        }
+
         buffer.append("# Modify the rate_vector with the control variables - \n");
         buffer.append("rate_vector = rate_vector.*control_vector;\n");
 

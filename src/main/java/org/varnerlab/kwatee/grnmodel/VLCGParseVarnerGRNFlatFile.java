@@ -92,16 +92,25 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         String gene_expression_buffer = _addListOfGeneExpressionReactionsFromModelTableToModelTree();
         String translation_expression_buffer = _addListOfTranslationReactionsFromModelTableToModelTree();
         String signal_transduction_buffer = _addListOfSignalTransductionReactionsFromModelTableToModelTree();
+        String mRNA_degradation_buffer = _addListOfMRNADegradationReactionsFromModelTableToModelTree();
+
+        // Formulate list of control terms -
+        String signal_transduction_control_buffer = _addListOfSignalTransductionControlTermsFromModelTableToModelTree();
+        String genetic_control_buffer = _addListOfGeneticControlTermsFromModelTableToModelTree();
 
         // ok, we have parsered all the components -
         // Now, let's go through and generate the model tree -
         xml_buffer.append("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>\n");
         xml_buffer.append("<GRNModel>\n");
+
+        // species -
         xml_buffer.append("\t<listOfSpecies>\n");
         xml_buffer.append(gene_buffer);
         xml_buffer.append(mRNA_buffer);
         xml_buffer.append(protein_buffer);
         xml_buffer.append("\t</listOfSpecies>\n");
+
+        // Reactions -
         xml_buffer.append("\t<listOfReactions>\n");
         xml_buffer.append("\t\t<listOfGeneExpressionReactions>\n");
         xml_buffer.append(gene_expression_buffer);
@@ -112,7 +121,22 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         xml_buffer.append("\t\t<listOfSignalTransductionReactions>\n");
         xml_buffer.append(signal_transduction_buffer);
         xml_buffer.append("\t\t</listOfSignalTransductionReactions>\n");
+        xml_buffer.append("\t\t<listOfSignalTransductionReactions>\n");
+        xml_buffer.append(signal_transduction_buffer);
+        xml_buffer.append(mRNA_degradation_buffer);
+        xml_buffer.append("\t\t</listOfSignalTransductionReactions>\n");
         xml_buffer.append("\t</listOfReactions>\n");
+
+        // Control terms -
+        xml_buffer.append("\t<listOfControlTerms>\n");
+
+        xml_buffer.append("\t\t<listOfGeneticControlTerms>\n");
+        xml_buffer.append(genetic_control_buffer);
+        xml_buffer.append("\t\t</listOfGeneticControlTerms>\n");
+        xml_buffer.append("\t\t<listOfSignalTransductionControlTerms>\n");
+        xml_buffer.append(signal_transduction_control_buffer);
+        xml_buffer.append("\t\t</listOfSignalTransductionControlTerms>\n");
+        xml_buffer.append("\t</listOfControlTerms>\n");
         xml_buffer.append("</GRNModel>\n");
 
         // Convert the string buffer into an XML Document object -
@@ -128,6 +152,133 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
     }
 
     // private helper methods -
+    private String _addListOfSignalTransductionControlTermsFromModelTableToModelTree() throws Exception {
+
+        // Method variables -
+        StringBuffer buffer = new StringBuffer();
+
+        // Get the translation reactions -
+        String class_name_key = _package_name_parser_delegate + ".VLCGSignalTransductionControlParserDelegate";
+        Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
+        Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
+        while (control_iterator.hasNext()) {
+
+            // Get the model component -
+            VLCGGRNModelComponent model_component = control_iterator.next();
+
+            // Get data from the model component -
+            String control_name = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_NAME);
+            String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
+            String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
+            String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
+
+            // Write the line -
+            buffer.append("\t\t\t");
+            buffer.append("<control control_name=\"");
+            buffer.append(control_name);
+            buffer.append("\" control_actor=\"");
+            buffer.append(control_actor);
+            buffer.append("\" control_target=\"");
+            buffer.append(control_target);
+            buffer.append("\" control_type=\"");
+            buffer.append(control_type);
+            buffer.append("\" />\n");
+        }
+
+        // return -
+        return buffer.toString();
+    }
+
+    private String _addListOfGeneticControlTermsFromModelTableToModelTree() throws Exception {
+
+        // Method variables -
+        StringBuffer buffer = new StringBuffer();
+
+        // Get the translation reactions -
+        String class_name_key = _package_name_parser_delegate + ".VLCGGeneExpressionControlParserDelegate";
+        Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
+        Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
+        while (control_iterator.hasNext()) {
+
+            // Get the model component -
+            VLCGGRNModelComponent model_component = control_iterator.next();
+
+            // Get data from the model component -
+            String control_name = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_NAME);
+            String control_type = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_TYPE);
+            String control_actor = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_ACTOR);
+            String control_target = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_TARGET);
+
+            // Write the line -
+            buffer.append("\t\t\t");
+            buffer.append("<control control_name=\"");
+            buffer.append(control_name);
+            buffer.append("\" control_actor=\"");
+            buffer.append(control_actor);
+            buffer.append("\" control_target=\"");
+            buffer.append(control_target);
+            buffer.append("\" control_type=\"");
+            buffer.append(control_type);
+            buffer.append("\" />\n");
+        }
+
+        // return -
+        return buffer.toString();
+    }
+
+    private String _addListOfMRNADegradationReactionsFromModelTableToModelTree() throws Exception {
+
+        // Method variables -
+        StringBuffer buffer = new StringBuffer();
+
+        // Get the mRNAs -
+        String class_name_key = _package_name_parser_delegate + ".VLCGTranslationParserDelegate";
+        Vector<VLCGGRNModelComponent> gene_vector = _model_component_table.get(Class.forName(class_name_key));
+
+        Iterator<VLCGGRNModelComponent> gene_iterator = gene_vector.iterator();
+        while (gene_iterator.hasNext()){
+
+            // Get the model component -
+            VLCGGRNModelComponent model_component = gene_iterator.next();
+
+            // grab the symbol -
+            String mrna_symbol = (String)model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_MRNA_SYMBOL);
+
+            // write the buffer line -
+            buffer.append("\t\t\t");
+            buffer.append("<reaction name=\"degradation_");
+            buffer.append(mrna_symbol);
+            buffer.append("\">\n");
+
+            buffer.append("\t\t\t\t");
+            buffer.append("<listOfReactants>\n");
+
+            buffer.append("\t\t\t\t\t");
+            buffer.append("<speciesReference species=\"");
+            buffer.append(mrna_symbol);
+            buffer.append("\" stoichiometric_coefficient=\"-1.0\" />\n");
+            buffer.append("\t\t\t\t");
+            buffer.append("</listOfReactants>\n");
+
+
+            buffer.append("\t\t\t\t");
+            buffer.append("<listOfProducts>\n");
+
+            // write into the buffer -
+            buffer.append("\t\t\t\t\t");
+            buffer.append("<speciesReference species=\"[]");
+            buffer.append("\" stoichiometric_coefficient=\"1.0\" />\n");
+
+            buffer.append("\t\t\t\t");
+            buffer.append("</listOfProducts>\n");
+
+            buffer.append("\t\t\t</reaction>\n");
+        }
+
+        // return -
+        return buffer.toString();
+    }
+
     private String _addListOfSignalTransductionReactionsFromModelTableToModelTree() throws Exception {
 
         // Method variables -
@@ -255,7 +406,6 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
                 buffer.append("\t\t\t\t");
                 buffer.append("</listOfProducts>\n");
-
                 buffer.append("\t\t\t</reaction>\n");
             }
         }

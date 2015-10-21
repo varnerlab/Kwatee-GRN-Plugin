@@ -42,7 +42,7 @@ public class VLCGSignalTransductionControlParserDelegate implements VLCGParserHa
         _model = new VLCGSignalTransductionControlModel();
 
         // Parse this line -
-        StringTokenizer stringTokenizer = new StringTokenizer(",");
+        StringTokenizer stringTokenizer = new StringTokenizer(line,",");
         int counter = 1;
         while (stringTokenizer.hasMoreElements()) {
 
