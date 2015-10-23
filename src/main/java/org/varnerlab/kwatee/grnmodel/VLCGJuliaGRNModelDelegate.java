@@ -905,7 +905,7 @@ public class VLCGJuliaGRNModelDelegate {
                 // integrate the transfer functions -
                 buffer.append("control_vector[");
                 buffer.append(reaction_index);
-                buffer.append("] = mean(transfer_function_vector);\n");
+                buffer.append("] = norm(transfer_function_vector);\n");
                 buffer.append("transfer_function_vector = 0;\n");
                 buffer.append("# ----------------------------------------------------------------------------------- #\n");
                 buffer.append("\n");

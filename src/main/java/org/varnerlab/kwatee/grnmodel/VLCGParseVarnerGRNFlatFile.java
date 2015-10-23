@@ -46,6 +46,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
     private VLCGTransformationPropertyTree _transformation_properties_tree = null;
     private final String _package_name_parser_delegate = "org.varnerlab.kwatee.grnmodel.parserdelegates";
     private Hashtable<Class,Vector<VLCGGRNModelComponent>> _model_component_table = new Hashtable();
+    private Vector<String> _species_vector = new Vector<String>();
 
     @Override
     public void setPropertiesTree(VLCGTransformationPropertyTree properties_tree) {
@@ -153,34 +154,38 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
         // Get the translation reactions -
         String class_name_key = _package_name_parser_delegate + ".VLCGSignalTransductionControlParserDelegate";
-        Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
-        Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
-        while (control_iterator.hasNext()) {
+        if (_model_component_table.containsKey(class_name_key)){
 
-            // Get the model component -
-            VLCGGRNModelComponent model_component = control_iterator.next();
+            Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
+            Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
+            while (control_iterator.hasNext()) {
 
-            // Get data from the model component -
-            String control_name = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_NAME);
-            String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
-            String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
-            String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
-            String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING);
+                // Get the model component -
+                VLCGGRNModelComponent model_component = control_iterator.next();
 
-            // Write the line -
-            buffer.append("\t\t\t");
-            buffer.append("<control control_name=\"");
-            buffer.append(control_name);
-            buffer.append("\" control_actor=\"");
-            buffer.append(control_actor);
-            buffer.append("\" control_target=\"");
-            buffer.append(control_target);
-            buffer.append("\" control_type=\"");
-            buffer.append(control_type);
-            buffer.append("\" raw_control_string=\"");
-            buffer.append(raw_string);
-            buffer.append("\" />\n");
+                // Get data from the model component -
+                String control_name = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_NAME);
+                String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
+                String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
+                String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
+                String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING);
+
+                // Write the line -
+                buffer.append("\t\t\t");
+                buffer.append("<control control_name=\"");
+                buffer.append(control_name);
+                buffer.append("\" control_actor=\"");
+                buffer.append(control_actor);
+                buffer.append("\" control_target=\"");
+                buffer.append(control_target);
+                buffer.append("\" control_type=\"");
+                buffer.append(control_type);
+                buffer.append("\" raw_control_string=\"");
+                buffer.append(raw_string);
+                buffer.append("\" />\n");
+            }
         }
+
 
         // return -
         return buffer.toString();
@@ -583,7 +588,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             // Symbol -
             String protein_symbol = symbol_iterator.next();
 
-            if (tmp_species_vector.contains(protein_symbol) == false){
+            if (tmp_species_vector.contains(protein_symbol) == false &&
+                    _species_vector.contains(protein_symbol) == false){
 
                 // build the record -
                 buffer.append("\t\t<species id=\"");
@@ -592,6 +598,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
                 // add -
                 tmp_species_vector.addElement(protein_symbol);
+                _species_vector.addElement(protein_symbol);
             }
         }
 
@@ -608,7 +615,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             String translation_product_symbol = (String)model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_PROTEIN_SYMBOL);
 
 
-            if (tmp_species_vector.contains(translation_product_symbol) == false){
+            if (tmp_species_vector.contains(translation_product_symbol) == false &&
+                    _species_vector.contains(translation_product_symbol) == false){
 
                 // build the record -
                 buffer.append("\t\t<species id=\"");
@@ -617,6 +625,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
                 // add -
                 tmp_species_vector.addElement(translation_product_symbol);
+                _species_vector.addElement(translation_product_symbol);
             }
         }
 
@@ -646,10 +655,17 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             // grab the symbol -
             String gene_symbol = (String)model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_MRNA_SYMBOL);
 
-            // create the buffer entry -
-            buffer.append("\t\t<species id=\"");
-            buffer.append(gene_symbol);
-            buffer.append("\" species_type=\"MRNA\" initial_amount=\"0.0\"/>\n");
+            // do we have this species already?
+            if (_species_vector.contains(gene_symbol) == false){
+
+                // create the buffer entry -
+                buffer.append("\t\t<species id=\"");
+                buffer.append(gene_symbol);
+                buffer.append("\" species_type=\"MRNA\" initial_amount=\"0.0\"/>\n");
+
+                // cache the symbol -
+                _species_vector.addElement(gene_symbol);
+            }
         }
 
         // return -
@@ -677,10 +693,17 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             // grab the symbol -
             String gene_symbol = (String)model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_GENE_SYMBOL);
 
-            // create the buffer entry -
-            buffer.append("\t\t<species id=\"");
-            buffer.append(gene_symbol);
-            buffer.append("\" species_type=\"GENE\" initial_amount=\"1.0\"/>\n");
+            // do we have this species already?
+            if (_species_vector.contains(gene_symbol) == false){
+
+                // create the buffer entry -
+                buffer.append("\t\t<species id=\"");
+                buffer.append(gene_symbol);
+                buffer.append("\" species_type=\"GENE\" initial_amount=\"1.0\"/>\n");
+
+                // cache the symbol -
+                _species_vector.addElement(gene_symbol);
+            }
         }
 
         // return -
