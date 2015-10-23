@@ -36,6 +36,7 @@ public class VLCGGeneExpressionControlModel implements VLCGGRNModelComponent {
     public static final String GENE_EXPRESSION_CONTROL_ACTOR = "ACTOR";
     public static final String GENE_EXPRESSION_CONTROL_TARGET = "TARGET";
     public static final String GENE_EXPRESSION_CONTROL_TYPE = "TYPE";
+    public static final String GENE_EXPRESSION_CONTROL_RAW_STRING = "raw_control_string";
 
     @Override
     public Object getModelComponent(String key) throws Exception {

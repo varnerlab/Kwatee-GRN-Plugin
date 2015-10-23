@@ -304,35 +304,65 @@ public class VLCGJuliaGRNModelDelegate {
                 // get the reactants -
                 Vector<VLCGSimpleSpeciesModel> species_model_vector = model_tree.getReactantsForSignalTransductionReactionWithName(reaction_name);
                 Iterator<VLCGSimpleSpeciesModel> species_model_iterator = species_model_vector.iterator();
-                while (species_model_iterator.hasNext()){
 
-                    // Get species model -
-                    VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
+                if (model_tree.isThisADegradationReaction(reaction_name)){
 
-                    // Get the index for this species_model -
-                    String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
-                    if (!symbol.equalsIgnoreCase("[]")){
+                    // ok, we have a degrdation reaction - this will get generated as first order -
+                    while (species_model_iterator.hasNext()) {
 
-                        int species_index = species_symbol_vector.indexOf(symbol);
+                        // Get species model -
+                        VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
 
-                        // add the line -
-                        buffer.append("*(");
-                        buffer.append(symbol);
-                        buffer.append(")/(saturation_constant_array[");
-                        buffer.append(reaction_counter);
-                        buffer.append(",");
-                        buffer.append(species_index+1);
-                        buffer.append("] + ");
-                        buffer.append(symbol);
-                        buffer.append(")");
+                        // Get the index for this species_model -
+                        String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                        if (!symbol.equalsIgnoreCase("[]")){
 
+                            int species_index = species_symbol_vector.indexOf(symbol);
+
+                            // add the line -
+                            buffer.append("*(");
+                            buffer.append(symbol);
+                            buffer.append(")");
+                        }
                     }
-                }
 
-                // add ; and newline -
-                buffer.append(";\n");
-                buffer.append("push!(rate_vector,tmp);\n");
-                buffer.append("\n");
+                    // add ; and newline -
+                    buffer.append(";\n");
+                    buffer.append("push!(rate_vector,tmp);\n");
+                    buffer.append("\n");
+                }
+                else {
+
+                    while (species_model_iterator.hasNext()){
+
+                        // Get species model -
+                        VLCGSimpleSpeciesModel species_model = species_model_iterator.next();
+
+                        // Get the index for this species_model -
+                        String symbol = (String)species_model.getModelComponent(VLCGSimpleSpeciesModel.SPECIES_SYMBOL);
+                        if (!symbol.equalsIgnoreCase("[]")){
+
+                            int species_index = species_symbol_vector.indexOf(symbol);
+
+                            // add the line -
+                            buffer.append("*(");
+                            buffer.append(symbol);
+                            buffer.append(")/(saturation_constant_array[");
+                            buffer.append(reaction_counter);
+                            buffer.append(",");
+                            buffer.append(species_index+1);
+                            buffer.append("] + ");
+                            buffer.append(symbol);
+                            buffer.append(")");
+
+                        }
+                    }
+
+                    // add ; and newline -
+                    buffer.append(";\n");
+                    buffer.append("push!(rate_vector,tmp);\n");
+                    buffer.append("\n");
+                }
             }
             else if (model_tree.isThisAGeneExpressionReaction(reaction_name)){
 
@@ -445,6 +475,10 @@ public class VLCGJuliaGRNModelDelegate {
         massbalances.append("# data_dictionary  - Data dictionary instance (holds model parameters) \n");
         massbalances.append("# ---------------------------------------------------------------------- #\n");
         massbalances.append("\n");
+        massbalances.append("# Correct nagative x's = throws errors in control even if small - \n");
+        massbalances.append("idx = find(x->(x<0),x);\n");
+        massbalances.append("x[idx] = 0.0;\n");
+
         massbalances.append("# Call the kinetics function - \n");
         massbalances.append("(rate_vector) = ");
         massbalances.append(kinetics_function_name);
@@ -467,11 +501,13 @@ public class VLCGJuliaGRNModelDelegate {
 
             // balance are encoded as matrix vector product -
             massbalances.append("# Encode the balance equations as a matrix vector product - \n");
+            massbalances.append("maximum_specific_growth_rate = data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"];\n");
             massbalances.append("S = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
+            massbalances.append("dilution_selection_matrix = data_dictionary[\"DILUTION_SELECTION_MATRIX\"];\n");
             massbalances.append("tmp_vector = S*rate_vector;\n");
             massbalances.append("number_of_states = length(tmp_vector);\n");
             massbalances.append("for state_index in [1:number_of_states]\n");
-            massbalances.append("\tdxdt_vector[state_index] = tmp_vector[state_index];\n");
+            massbalances.append("\tdxdt_vector[state_index] = tmp_vector[state_index] - maximum_specific_growth_rate*(dilution_selection_matrix[state_index,state_index])*(x[state_index]);\n");
             massbalances.append("end");
             massbalances.append("\n");
         }
@@ -538,6 +574,13 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("\"));\n");
         buffer.append("(NSPECIES,NREACTIONS) = size(S);\n");
 
+        // How many genes do we have in the model?
+        buffer.append("# How many genes do we have in the model? - \n");
+        buffer.append("number_of_genes = ");
+        buffer.append(model_tree.getNumberOfGenesFromGRNModelTree());
+        buffer.append(";\n");
+
+
         // Get the species id vector -
         buffer.append("\n");
         buffer.append("# Formulate the initial condition array - \n");
@@ -597,7 +640,8 @@ public class VLCGJuliaGRNModelDelegate {
             String reaction_name = (String) reaction_name_iterator.next();
 
             // is this a signal transduction reaction?
-            if (model_tree.isThisASignalTransductionReaction(reaction_name)){
+            if (model_tree.isThisASignalTransductionReaction(reaction_name) &&
+                    !model_tree.isThisADegradationReaction(reaction_name)){
 
                 // Get the reaction comment string -
                 String comment_string = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
@@ -661,8 +705,12 @@ public class VLCGJuliaGRNModelDelegate {
                     // Get the comment from tghe control model
                     VLCGSimpleControlLogicModel control_model = control_iterator.next();
                     String comment = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
+                    String header_comment = model_tree.buildControlCommentStringForControlConnectionWithName((String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_NAME));
 
                     // write the gain line -
+                    buffer.append("# ");
+                    buffer.append(header_comment);
+                    buffer.append("\n");
                     buffer.append("control_parameter_array[");
                     buffer.append(control_index);
                     buffer.append(",1] = 0.1;\t#\t");
@@ -678,7 +726,7 @@ public class VLCGJuliaGRNModelDelegate {
                     buffer.append(control_index);
                     buffer.append(" Order: \t");
                     buffer.append(comment);
-                    buffer.append("\n");
+                    buffer.append("\n\n");
 
                     // update counter -
                     control_index++;
@@ -686,6 +734,11 @@ public class VLCGJuliaGRNModelDelegate {
             }
         }
 
+        //buffer.append("\n");
+        buffer.append("# Set the maximum specific growth rate - \n");
+        buffer.append("maximum_specific_growth_rate = 0.5;\n");
+        buffer.append("dilution_selection_matrix = eye(NSPECIES);\n");
+        buffer.append("dilution_selection_matrix[1:number_of_genes,1:number_of_genes] = 0.0;\n");
 
         buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
@@ -695,6 +748,8 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("data_dictionary[\"SATURATION_CONSTANT_ARRAY\"] = saturation_constant_array;\n");
         buffer.append("data_dictionary[\"INITIAL_CONDITION_ARRAY\"] = initial_condition_array;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
+        buffer.append("data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"] = maximum_specific_growth_rate;\n");
+        buffer.append("data_dictionary[\"DILUTION_SELECTION_MATRIX\"] = dilution_selection_matrix;\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
 
         // last line -

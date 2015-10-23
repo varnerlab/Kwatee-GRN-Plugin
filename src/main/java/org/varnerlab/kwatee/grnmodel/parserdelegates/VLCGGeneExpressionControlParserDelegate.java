@@ -42,6 +42,9 @@ public class VLCGGeneExpressionControlParserDelegate implements VLCGParserHandle
         // ok, create a model instance -
         _model = new VLCGGeneExpressionControlModel();
 
+        // Store the raw string -
+        _model.setModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_RAW_STRING,_formatReactionString(line));
+
         // Parse this line -
         StringTokenizer stringTokenizer = new StringTokenizer(line,",");
         int counter = 1;
@@ -75,5 +78,56 @@ public class VLCGGeneExpressionControlParserDelegate implements VLCGParserHandle
 
         // return the model -
         return _model;
+    }
+
+    private String _formatReactionString(String line) throws Exception {
+
+        // method variables -
+        int counter = 1;
+        StringBuffer buffer = new StringBuffer();
+
+        // Items -
+        String name = "";
+        String actor = "";
+        String type = "";
+        String target = "";
+
+        // split around the ','
+        StringTokenizer stringTokenizer = new StringTokenizer(line,",");
+        while (stringTokenizer.hasMoreElements()){
+
+            // Get the token -
+            String token = (String)stringTokenizer.nextToken();
+
+            if (counter == 1){
+                name = token;
+            }
+            else if (counter == 2){
+                actor = token;
+            }
+            else if (counter == 3){
+                target = token;
+            }
+            else if (counter == 4){
+                String tmp = token.substring(0,token.length() - 1);
+                type = tmp;
+            }
+
+
+            // update the counter -
+            counter++;
+        }
+
+        // Build the buffer -
+        buffer.append(name);
+        buffer.append(": ");
+        buffer.append(actor);
+        buffer.append(" ");
+        buffer.append(type);
+        buffer.append(" ");
+        buffer.append(target);
+
+        // return the buffer -
+        return buffer.toString();
     }
 }

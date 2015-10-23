@@ -57,6 +57,20 @@ public class VLCGGRNModelTreeWrapper {
     }
 
 
+    public int getNumberOfGenesFromGRNModelTree() throws Exception {
+
+        // method variables -
+        int number_of_genes = 0;
+
+        // setup the xpath -
+        String xpath_string = ".//species[@species_type=\"GENE\"]";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        number_of_genes = node_list.getLength();
+
+        // return -
+        return number_of_genes;
+    }
+
     public int getNumberOfSpeciesFromGRNModelTree() throws Exception {
 
         // method variables -
@@ -327,6 +341,31 @@ public class VLCGGRNModelTreeWrapper {
         return species_vector;
     }
 
+
+    public boolean isThisADegradationReaction(String reaction_name) throws Exception {
+
+        // method variables -
+        boolean return_flag = false;
+
+        // ok, check the products of this reaction - do we have []?
+        String xpath_string = ".//reaction[@name=\""+reaction_name+"\"]/listOfProducts/speciesReference/@species";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+        int number_of_products = node_list.getLength();
+        for (int node_index = 0;node_index<number_of_products;node_index++){
+
+            // Get the node -
+            Node node = node_list.item(node_index);
+
+            // Check the symbol -
+            if (node.getNodeValue().equalsIgnoreCase("[]")){
+                return true;
+            }
+        }
+
+        // return -
+        return return_flag;
+    }
+
     public boolean isThisReactionRegulated(String reaction_name) throws Exception {
 
         // method variables -
@@ -395,6 +434,27 @@ public class VLCGGRNModelTreeWrapper {
         return return_flag;
     }
 
+    public String buildControlCommentStringForControlConnectionWithName(String reaction_name) throws Exception {
+
+        // Method variables -
+        String comment_string = "";
+
+        // Xpath -
+        String xpath_string = "//control[@control_name=\""+reaction_name+"\"]/@raw_control_string";
+        System.out.println(xpath_string);
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        // We should have *only* a single node -
+        if (node_list.getLength()!=1){
+            throw new Exception("Reaction names must be unique. There appear to be multiple reactions named "+reaction_name);
+        }
+
+        Node reaction_node = node_list.item(0);
+        comment_string = reaction_node.getNodeValue();
+
+        // return -
+        return comment_string;
+    }
 
     public String buildReactionCommentStringForReactionWithName(String reaction_name) throws Exception {
 

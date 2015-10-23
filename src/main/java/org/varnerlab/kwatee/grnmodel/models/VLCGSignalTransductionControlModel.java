@@ -36,6 +36,7 @@ public class VLCGSignalTransductionControlModel implements VLCGGRNModelComponent
     public static final String SIGNAL_TRANSDUCTION_CONTROL_ACTOR = "STC_ACTOR";
     public static final String SIGNAL_TRANSDUCTION_CONTROL_TARGET = "STC_TARGET";
     public static final String SIGNAL_TRANSDUCTION_CONTROL_TYPE = "STC_TYPE";
+    public static final String SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING = "raw_control_string";
 
     @Override
     public Object getModelComponent(String key) throws Exception {

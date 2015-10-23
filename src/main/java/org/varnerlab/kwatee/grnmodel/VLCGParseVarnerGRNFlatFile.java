@@ -165,6 +165,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
             String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
             String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
+            String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING);
 
             // Write the line -
             buffer.append("\t\t\t");
@@ -176,6 +177,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append(control_target);
             buffer.append("\" control_type=\"");
             buffer.append(control_type);
+            buffer.append("\" raw_control_string=\"");
+            buffer.append(raw_string);
             buffer.append("\" />\n");
         }
 
@@ -202,6 +205,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             String control_type = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_TYPE);
             String control_actor = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_ACTOR);
             String control_target = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_TARGET);
+            String raw_string = (String)model_component.getModelComponent(VLCGGeneExpressionControlModel.GENE_EXPRESSION_CONTROL_RAW_STRING);
 
             // Write the line -
             buffer.append("\t\t\t");
@@ -213,6 +217,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append(control_target);
             buffer.append("\" control_type=\"");
             buffer.append(control_type);
+            buffer.append("\" raw_control_string=\"");
+            buffer.append(raw_string);
             buffer.append("\" />\n");
         }
 
