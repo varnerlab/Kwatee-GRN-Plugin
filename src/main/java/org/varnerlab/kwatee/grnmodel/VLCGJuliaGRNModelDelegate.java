@@ -504,10 +504,12 @@ public class VLCGJuliaGRNModelDelegate {
             massbalances.append("maximum_specific_growth_rate = data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"];\n");
             massbalances.append("S = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
             massbalances.append("dilution_selection_matrix = data_dictionary[\"DILUTION_SELECTION_MATRIX\"];\n");
+            massbalances.append("tau_array = data_dictionary[\"TIME_CONSTANT_ARRAY\"];\n");
             massbalances.append("tmp_vector = S*rate_vector;\n");
             massbalances.append("number_of_states = length(tmp_vector);\n");
             massbalances.append("for state_index in [1:number_of_states]\n");
             massbalances.append("\tdxdt_vector[state_index] = tmp_vector[state_index] - maximum_specific_growth_rate*(dilution_selection_matrix[state_index,state_index])*(x[state_index]);\n");
+            massbalances.append("\tdxdt_vector[state_index] = tau_array[state_index]*dxdt_vector[state_index];\n");
             massbalances.append("end");
             massbalances.append("\n");
         }
@@ -603,6 +605,29 @@ public class VLCGJuliaGRNModelDelegate {
             buffer.append(symbol);
             buffer.append("\n");
         }
+
+        // Get the species id vector -
+        buffer.append("\n");
+        buffer.append("# Formulate the time constant array - \n");
+        buffer.append("time_constant_array = Float64[];\n");
+        species_symbol_vector = model_tree.getSpeciesSymbolsFromGRNModel();
+        number_of_species = species_symbol_vector.size();
+        for (int species_index = 0;species_index<number_of_species;species_index++){
+
+            // Species -
+            String symbol = species_symbol_vector.elementAt(species_index);
+            String initial_amount = model_tree.getInitialAmountForSpeciesWithSymbol(symbol);
+
+            // write ic record -
+            buffer.append("push!(time_constant_array,1.0");
+            buffer.append(");\t");
+            buffer.append("#\t");
+            buffer.append(species_index+1);
+            buffer.append("\t time constant: ");
+            buffer.append(symbol);
+            buffer.append("\n");
+        }
+
 
         buffer.append("\n");
         buffer.append("# Formulate the rate constant array - \n");
@@ -747,6 +772,7 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("data_dictionary[\"RATE_CONSTANT_ARRAY\"] = rate_constant_array;\n");
         buffer.append("data_dictionary[\"SATURATION_CONSTANT_ARRAY\"] = saturation_constant_array;\n");
         buffer.append("data_dictionary[\"INITIAL_CONDITION_ARRAY\"] = initial_condition_array;\n");
+        buffer.append("data_dictionary[\"TIME_CONSTANT_ARRAY\"] = time_constant_array;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
         buffer.append("data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"] = maximum_specific_growth_rate;\n");
         buffer.append("data_dictionary[\"DILUTION_SELECTION_MATRIX\"] = dilution_selection_matrix;\n");
