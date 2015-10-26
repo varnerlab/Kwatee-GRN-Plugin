@@ -1,1 +1,174 @@
-# Kwatee-GRN-Plugin
+Introduction
+----
+
+The Kwatee signal transduction/gene regulatory network (stGRN) model plugin generates a dynamic model of signal transduction and gene expression processes. The stGRN model equations are generated in the [Julia](http://julialang.org) programming language. The model equations are solved using the [SUNDIALS](https://github.com/JuliaLang/Sundials.jl/blob/master/README.md) package for [Julia](http://julialang.org). 
+
+How do I generate code?
+---
+
+All Kwatee plugins are used by putting the associated jar file into the plugins subdirectory of your [Kwatee server installation](https://github.com/varnerlab/KwateeServer). You can either use the current compiled jar file found at the `./build/libs` subdirectory
+or you can compile the source code yourself using the [Gradle](http://gradle.org) build system by executing:
+
+~~~
+gradle jar
+~~~
+
+in the root directory of this repository. __Note:__ If you choose to compile from source, you need *both* the Kwatee server and libSBML jars on your Java classpath. The `build.gradle` file in the repository automatically adds all jars found in the `libs` subdirectory to your classpath.
+
+
+Model and job files
+----
+
+The biology of your stGRN model is specified using a simple comma delimated file structure called a Varner flat file (VFF). An example stGRN model is included in the `examples` subdirectory of the [Kwatee server](https://github.com/varnerlab/KwateeServer/tree/master/examples/cell-free-example) and shown below:
+
+~~~
+// ============================================================ //
+// Test model file for the Kwatee GRN plugin
+// Author: J. Varner
+// Version: 1.0
+// ============================================================ //
+//
+// ============================================================ //
+// Signal transduction reactions -
+#pragma handler_class = VLCGSignalTransductionParserDelegate
+// ============================================================ //
+trigger_addition,[],T,0,inf;
+trigger_removal,T,[],0,inf;
+RNAP_assembly,RNAP,[],-inf,inf;
+RIOBOSOME_assembly,RIBOSOME,[],-inf,inf;
+
+// Conversion of [] => A -(P3)-> B => []
+MR_1,M_A,M_B,0,inf;
+MR_A_SOURCE,[],M_A,0,inf;
+MR_B_SINK,M_B,[],0,inf;
+
+// ============================================================ //
+// Control terms signal transduction -
+#pragma handler_class = VLCGSignalTransductionControlParserDelegate
+// ============================================================ //
+catalysis_MR_1,P3,MR_1,activation;
+
+// ============================================================ //
+// Gene expression reactions -
+#pragma handler_class = VLCGGeneExpressionParserDelegate
+// ============================================================ //
+induction_gene_1,gene_1,mRNA_1,RNAP;
+induction_gene_2,gene_2,mRNA_2,RNAP;
+induction_gene_3,gene_3,mRNA_3,RNAP;
+
+// ============================================================ //
+// Translation reactions -
+#pragma handler_class = VLCGTranslationParserDelegate
+// ============================================================ //
+translation_mRNA_1,mRNA_1,P1,RIBOSOME;
+translation_mRNA_2,mRNA_2,P2,RIBOSOME;
+translation_mRNA_3,mRNA_3,P3,RIBOSOME;
+
+// ============================================================ //
+// Control terms gene expression -
+#pragma handler_class = VLCGGeneExpressionControlParserDelegate
+// ============================================================ //
+induction_gene_1_by_T,T,induction_gene_1,induction;
+induction_gene_2_by_P1,P1,induction_gene_2,induction;
+induction_gene_3_by_P2,P2,induction_gene_3,induction;
+~~~
+
+The model specification file (by default given the filename `Model.net`) defines the biology of the model that gets generated. A cell free VFF contains two sections, the metabolic reaction section (top) and the allosteric regulation section (bottom). 
+
+__Signal transduction records__: Signal transduction reaction records contain five fields:
+
+~~~
+Name (unique),reactants,products,reverse {0|-inf},forward {0|inf};
+~~~
+
+The reaction name field *__must be unique__*, and should not contain any commas or spaces. The reactant and product strings share a simlar structure:
+
+~~~
+{stochiometric coefficient | 1.0}*{metabolite symbol}+...
+~~~
+
+Stoichiometric coefficients can be either integers or float values, and metabolite symbols must not contain commas, spaces or other crazy characters (underscores are ok). Also, metabolite symbols cannot start with a number. The special metabolite symbol `[]` denotes the `SYSTEM`, a infinite source or sink. There must be no spaces between the +'s in the reactant or product strings. By default, all stoichiometric coefficients are assumed to be `1.0`, thus there is no need to specifiy a coefficient if it is not different from `1.0`. The directionalty strings let Kwatee know if we should generate a reverse reaction. It is assumed that all reactions are non-negative; if a reaction is reversible, two irreversible reactions are generated by Kwatee. 
+
+__Signal transduction control records__: One of the unique aspects of the Kwatee stGRN modeling framework is the inclusion of signal transduction control terms. These terms are specified by signal transduction control records in the stGRN model. Signal transduction control records contain four fields and take the form:
+
+~~~
+Name (unique),actor,target,type {inhibition|activation};
+~~~
+
+The first field of a control record is a `name` field (which must be unique). The name field is followed by the `actor` field, which is the symbol of the regulator. Next comes the `target` field, which is the reaction name that is regulated. Lastly, a regulation `type` is specified using either of the string literals `inhibition` or `activation`. The `type` field is __not__ case sensitive.
+
+__Gene expression records__: Gene expression records encode gene expression processes in the stGRN model. Gene expression records contain four fields:
+
+~~~
+Name (unique),gene symbol,mRNA symbol,RNA polymerase symbol;
+~~~
+
+The first field in a gene expression record is a `name` field, which must be unique. The `name` field is followed by a `gene` field which cannot contain spaces, or crazy characters. Next comes the `mRNA` field followed by the `RNA polymerase` field.
+
+__Translation records__: Translation records, which encode translation processes in stGRN models, contain four fields and have a structure similar to gene expression records.
+
+__Gene expression control records__: Gene expression control records, which encode the control the induction or repression of gene expression processes in stGRN models, contain four fields:
+
+~~~
+Name (unique),actor (regulator),target,type {induction|repression};
+~~~
+
+Gene expression control records have a structure similar to signal transduction control records with the exception that the type literals are `induction` or `repression`.
+
+__Job configuration files__: In addition to model specification files, to succesfully generate code you will need a job specification file by default given the filename `Configuration.xml` which defines paths and other data required by Kwatee. A typical job configuration file is:
+
+~~~
+<?xml version="1.0" encoding="UTF-8"?>
+<Model username="jeffreyvarner" model_version="1.0" model_type="GRN-JULIA" large_scale_optimized="false" model_name="TEST_MODEL">
+  <Configuration>
+    <ListOfPackages>
+        <package required="YES" symbol="INPUT_HANDLER_PACKAGE" package_name="org.varnerlab.kwatee.grnmodel"></package>
+        <package required="YES" symbol="OUTPUT_HANDLER_PACKAGE" package_name="org.varnerlab.kwatee.grnmodel"></package>
+    </ListOfPackages>
+    <ListOfPaths>
+        <path required="YES" symbol="KWATEE_INPUT_PATH" path_location="/Users/jeffreyvarner/Desktop/development/kwatee_test_grn_model/"></path>
+        <path required="YES" symbol="KWATEE_SOURCE_OUTPUT_PATH" path_location="/Users/jeffreyvarner/Desktop/development/kwatee_test_grn_model/src/"></path>
+        <path required="YES" symbol="KWATEE_NETWORK_OUTPUT_PATH" path_location="/Users/jeffreyvarner/Desktop/development/kwatee_test_grn_model/network/"></path>
+        <path required="YES" symbol="KWATEE_DEBUG_OUTPUT_PATH" path_location="/Users/jeffreyvarner/Desktop/development/kwatee_test_grn_model/debug/"></path>
+
+        <path required="YES" symbol="KWATEE_SERVER_ROOT_DIRECTORY" path_location="/Users/jeffreyvarner/Desktop/KWATEEServer-v1.0/"></path>
+        <path required="YES" symbol="KWATEE_SERVER_JAR_DIRECTORY" path_location="/Users/jeffreyvarner/Desktop/KWATEEServer-v1.0/dist/"></path>
+        <path required="YES" symbol="KWATEE_PLUGINS_JAR_DIRECTORY" path_location="/Users/jeffreyvarner/Desktop/KWATEEServer-v1.0/plugins/"></path>
+    </ListOfPaths>
+  </Configuration>
+
+  <Handler>
+      <InputHandler required="YES" input_classname="VLCGParseVarnerGRNFlatFile" package="INPUT_HANDLER_PACKAGE"></InputHandler>
+      <OutputHandler required="YES" output_classname="VLCGWriteJuliaGRNModel" package="OUTPUT_HANDLER_PACKAGE"></OutputHandler>
+  </Handler>
+  <InputOptions>
+      <NetworkFile required="YES" path_symbol="KWATEE_INPUT_PATH" filename="Model.net"></NetworkFile>
+      <OrderFile required="NO" path_symbol="KWATEE_INPUT_PATH" filename="Order.dat"></OrderFile>
+      <ModelParameterFile required="NO" path_symbol="KWATEE_INPUT_PATH" filename="Parameters.dat"></ModelParameterFile>
+      <InitialConditionFile required="NO" path_symbol="KWATEE_INPUT_PATH" filename="InitialConditins.dat"></InitialConditionFile>
+  </InputOptions>
+  <OutputOptions>
+      <DataFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="DataFile.jl"></DataFunction>
+      <BalanceFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="Balances.jl"></BalanceFunction>
+      <KineticsFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="Kinetics.jl"></KineticsFunction>
+      <InputFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="Inputs.jl"></InputFunction>
+      <DriverFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="SolveBalances.jl"></DriverFunction>
+      <ControlFunction required="YES" path_symbol="KWATEE_SOURCE_OUTPUT_PATH" filename="Control.jl"></ControlFunction>
+
+      <StoichiometricMatrix required="YES" path_symbol="KWATEE_NETWORK_OUTPUT_PATH" filename="Network.dat"></StoichiometricMatrix>
+      <DebugOutputFile required="YES" path_symbol="KWATEE_DEDUG_OUTPUT_PATH" filename="Debug.txt"></DebugOutputFile>
+  </OutputOptions>
+</Model>
+~~~
+
+The majority of the fields in the job configuration file can stay at the default values. However, you will need to specify your path structure (where Kwatee can find your files, where you want your generated code to reside, and where to find the server). Thus, you should edit the paths in the `<listOfPaths>...</listOfPaths>` section of the configuration file with your values. There typically only a few paths that must be specified:
+
+* `KWATEE_INPUT_PATH`: Directory where Kwatee will find your `Model.net` file.
+* `KWATEE_SOURCE_OUTPUT_PATH`: Directory where your generated model source code will be written (default is `src`).
+* `KWATEE_NETWORK_OUTPUT_PATH`: Directory where your stoichiometric matrix be written (default is `network`).
+* `KWATEE_DEBUG_OUTPUT_PATH`: Directory where any debug information is written (default is `debug`).
+* `KWATEE_SERVER_ROOT_DIRECTORY`: Directory where your Kwatee server is installed.
+* `KWATEE_SERVER_JAR_DIRECTORY`: Subdirectory where the Kwatee server jar file can be found (default is `dist`).
+* `KWATEE_PLUGINS_JAR_DIRECTORY`: Subdirectory where Kwatee can find your plugin jars (default is `plugins`).
+
+

@@ -156,34 +156,36 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         String class_name_key = _package_name_parser_delegate + ".VLCGSignalTransductionControlParserDelegate";
         if (_model_component_table.containsKey(class_name_key)){
 
-            Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
-            Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
-            while (control_iterator.hasNext()) {
 
-                // Get the model component -
-                VLCGGRNModelComponent model_component = control_iterator.next();
+        }
 
-                // Get data from the model component -
-                String control_name = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_NAME);
-                String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
-                String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
-                String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
-                String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING);
+        Vector<VLCGGRNModelComponent> control_vector = _model_component_table.get(Class.forName(class_name_key));
+        Iterator<VLCGGRNModelComponent> control_iterator = control_vector.iterator();
+        while (control_iterator.hasNext()) {
 
-                // Write the line -
-                buffer.append("\t\t\t");
-                buffer.append("<control control_name=\"");
-                buffer.append(control_name);
-                buffer.append("\" control_actor=\"");
-                buffer.append(control_actor);
-                buffer.append("\" control_target=\"");
-                buffer.append(control_target);
-                buffer.append("\" control_type=\"");
-                buffer.append(control_type);
-                buffer.append("\" raw_control_string=\"");
-                buffer.append(raw_string);
-                buffer.append("\" />\n");
-            }
+            // Get the model component -
+            VLCGGRNModelComponent model_component = control_iterator.next();
+
+            // Get data from the model component -
+            String control_name = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_NAME);
+            String control_type = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TYPE);
+            String control_actor = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_ACTOR);
+            String control_target = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_TARGET);
+            String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionControlModel.SIGNAL_TRANSDUCTION_CONTROL_RAW_STRING);
+
+            // Write the line -
+            buffer.append("\t\t\t");
+            buffer.append("<control control_name=\"");
+            buffer.append(control_name);
+            buffer.append("\" control_actor=\"");
+            buffer.append(control_actor);
+            buffer.append("\" control_target=\"");
+            buffer.append(control_target);
+            buffer.append("\" control_type=\"");
+            buffer.append(control_type);
+            buffer.append("\" raw_control_string=\"");
+            buffer.append(raw_string);
+            buffer.append("\" />\n");
         }
 
 
