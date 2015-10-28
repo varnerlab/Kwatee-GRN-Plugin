@@ -256,7 +256,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append("\t\t\t");
             buffer.append("<reaction name=\"degradation_");
             buffer.append(mrna_symbol);
-            buffer.append("\" raw_reaction_string=\"");
+            buffer.append("\" default_rate_constant=\"0.1\"");
+            buffer.append(" raw_reaction_string=\"");
             buffer.append(raw_reaction_string);
             buffer.append("\">\n");
 
@@ -314,7 +315,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append("\t\t\t");
             buffer.append("<reaction name=\"");
             buffer.append(reaction_name);
-            buffer.append("\" raw_reaction_string=\"");
+            buffer.append("\" default_rate_constant=\"1.0\"");
+            buffer.append(" raw_reaction_string=\"");
             buffer.append(raw_string);
             buffer.append("\">\n");
             buffer.append("\t\t\t\t");

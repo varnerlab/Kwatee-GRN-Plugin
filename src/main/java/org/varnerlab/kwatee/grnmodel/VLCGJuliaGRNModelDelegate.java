@@ -478,7 +478,7 @@ public class VLCGJuliaGRNModelDelegate {
         massbalances.append("# Correct nagative x's = throws errors in control even if small - \n");
         massbalances.append("idx = find(x->(x<0),x);\n");
         massbalances.append("x[idx] = 0.0;\n");
-
+        massbalances.append("\n");
         massbalances.append("# Call the kinetics function - \n");
         massbalances.append("(rate_vector) = ");
         massbalances.append(kinetics_function_name);
@@ -617,9 +617,16 @@ public class VLCGJuliaGRNModelDelegate {
             // Species -
             String symbol = species_symbol_vector.elementAt(species_index);
             String initial_amount = model_tree.getInitialAmountForSpeciesWithSymbol(symbol);
+            String species_type = model_tree.getSpeciesTypeForSpeciesWithName(symbol);
+
+            if (species_type.equalsIgnoreCase("MRNA") == true){
+                buffer.append("push!(time_constant_array,0.1");
+            }
+            else {
+                buffer.append("push!(time_constant_array,1.0");
+            }
 
             // write ic record -
-            buffer.append("push!(time_constant_array,1.0");
             buffer.append(");\t");
             buffer.append("#\t");
             buffer.append(species_index+1);
@@ -643,8 +650,16 @@ public class VLCGJuliaGRNModelDelegate {
             // Get the comment for this reaction -
             String comment = model_tree.buildReactionCommentStringForReactionWithName(reaction_name);
 
+            // ok, let's check to see if this is a degradation reaction -
+            float default_parameter_value = 1.0f;
+            if (model_tree.isThisADegradationReaction(reaction_name) == true){
+                default_parameter_value = 0.1f;
+            }
+
             // write the line -
-            buffer.append("push!(rate_constant_array,0.0);\t# ");
+            buffer.append("push!(rate_constant_array,");
+            buffer.append(default_parameter_value);
+            buffer.append(");\t# ");
             buffer.append(reaction_counter);
             buffer.append("\t");
             buffer.append(comment);
@@ -827,6 +842,7 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("# ---------------------------------------------------------------------- #\n");
         buffer.append("\n");
         buffer.append("# Set a default value for the allosteric control variables - \n");
+        buffer.append("EPSILON = 1.0e-3;\n");
         buffer.append("number_of_reactions = length(rate_vector);\n");
         buffer.append("control_vector = ones(number_of_reactions);\n");
         buffer.append("control_parameter_array = data_dictionary[\"CONTROL_PARAMETER_ARRAY\"];\n");
@@ -865,6 +881,7 @@ public class VLCGJuliaGRNModelDelegate {
                 // ok, we have a regulation term for this reaction
                 buffer.append("# ----------------------------------------------------------------------------------- #\n");
                 buffer.append("transfer_function_vector = Float64[];\n");
+                buffer.append("\n");
 
                 // Get the vector of transfer function wrappers -
                 Vector<VLCGSimpleControlLogicModel> control_model_vector = model_tree.getControlModelListFromGRNModelTreeForReactionWithName(reaction_name);
@@ -889,37 +906,46 @@ public class VLCGJuliaGRNModelDelegate {
                     if (type.equalsIgnoreCase("repression") || type.equalsIgnoreCase("inhibition")){
 
                         // write -
-                        buffer.append("push!(transfer_function_vector,1.0 - (control_parameter_array[");
-                        buffer.append(control_index);
-                        buffer.append(",1]*");
+
+                        // check do we have a zero inhibitor?
+
+                        buffer.append("if (");
                         buffer.append(actor);
-                        buffer.append("^control_parameter_array[");
+                        buffer.append("<EPSILON);\n");
+                        buffer.append("\tpush!(transfer_function_vector,0.0);\n");
+                        buffer.append("else\n");
+                        buffer.append("\tpush!(transfer_function_vector,1.0 - (control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1]*(");
+                        buffer.append(actor);
+                        buffer.append(")^control_parameter_array[");
                         buffer.append(control_index);
                         buffer.append(",2])/(1+");
                         buffer.append("control_parameter_array[");
                         buffer.append(control_index);
-                        buffer.append(",1]*");
+                        buffer.append(",1]*(");
                         buffer.append(actor);
-                        buffer.append("^control_parameter_array[");
+                        buffer.append(")^control_parameter_array[");
                         buffer.append(control_index);
                         buffer.append(",2]));\n");
-
+                        buffer.append("end\n");
+                        buffer.append("\n");
                     }
                     else {
 
                         // write -
                         buffer.append("push!(transfer_function_vector,(control_parameter_array[");
                         buffer.append(control_index);
-                        buffer.append(",1]*");
+                        buffer.append(",1]*(");
                         buffer.append(actor);
-                        buffer.append("^control_parameter_array[");
+                        buffer.append(")^control_parameter_array[");
                         buffer.append(control_index);
                         buffer.append(",2])/(1+");
                         buffer.append("control_parameter_array[");
                         buffer.append(control_index);
-                        buffer.append(",1]*");
+                        buffer.append(",1]*(");
                         buffer.append(actor);
-                        buffer.append("^control_parameter_array[");
+                        buffer.append(")^control_parameter_array[");
                         buffer.append(control_index);
                         buffer.append(",2]));\n");
                     }
@@ -931,7 +957,7 @@ public class VLCGJuliaGRNModelDelegate {
                 // integrate the transfer functions -
                 buffer.append("control_vector[");
                 buffer.append(reaction_index);
-                buffer.append("] = norm(transfer_function_vector);\n");
+                buffer.append("] = mean(transfer_function_vector);\n");
                 buffer.append("transfer_function_vector = 0;\n");
                 buffer.append("# ----------------------------------------------------------------------------------- #\n");
                 buffer.append("\n");

@@ -434,6 +434,19 @@ public class VLCGGRNModelTreeWrapper {
         return return_flag;
     }
 
+    public String getSpeciesTypeForSpeciesWithName(String species_name) throws Exception {
+
+        // Method variables -
+        String type_string = "";
+
+        // Xpath -
+        String xpath_string = ".//species[@id=\""+species_name+"\"]/@species_type";
+        type_string = _lookupPropertyValueFromTreeUsingXPath(xpath_string);
+
+        // return -
+        return type_string;
+    }
+
     public String buildControlCommentStringForControlConnectionWithName(String reaction_name) throws Exception {
 
         // Method variables -
@@ -441,7 +454,6 @@ public class VLCGGRNModelTreeWrapper {
 
         // Xpath -
         String xpath_string = "//control[@control_name=\""+reaction_name+"\"]/@raw_control_string";
-        System.out.println(xpath_string);
         NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
 
         // We should have *only* a single node -
