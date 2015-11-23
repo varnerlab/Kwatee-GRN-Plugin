@@ -35,6 +35,7 @@ public class VLCGSignalTransductionReactionModel implements VLCGGRNModelComponen
 
     // hastable keys -
     public static final String SIGNAL_TRANSDUCTION_REACTION_NAME = "reaction_name";
+    public static final String SIGNAL_TRANSDUCTION_REACTION_ENZYME = "STR_ENZYME";
     public static final String SIGNAL_TRANSDUCTION_REACTION_REACTANTS = "REACTANTS";
     public static final String SIGNAL_TRANSDUCTION_REACTION_PRODUCTS = "PRODUCTS";
     public static final String SIGNAL_TRANSDUCTION_REACTION_REVERSE = "REVERSE";
@@ -47,7 +48,7 @@ public class VLCGSignalTransductionReactionModel implements VLCGGRNModelComponen
     public Object getModelComponent(String key) throws Exception {
 
         if (key == null || _reaction_component_table.containsKey(key) == false){
-            throw new Exception("ERROR: Missing metabolic reaction component. Can't find key = "+key);
+            throw new Exception("Missing signal transduction component. Can't find the key = "+key);
         }
 
         return _reaction_component_table.get(key);
@@ -60,7 +61,7 @@ public class VLCGSignalTransductionReactionModel implements VLCGGRNModelComponen
             return;
         }
 
-        System.out.println("key = "+key+" value = "+value);
+        //System.out.println("key = "+key+" value = "+value);
 
         // store the reaction component -
         _reaction_component_table.put(key,value);

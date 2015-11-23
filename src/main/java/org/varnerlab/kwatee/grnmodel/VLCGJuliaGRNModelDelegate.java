@@ -190,7 +190,7 @@ public class VLCGJuliaGRNModelDelegate {
         driver.append("\n");
 
         driver.append("# Get required stuff from DataFile struct -\n");
-        driver.append("TSIM = [TSTART:Ts:TSTOP];\n");
+        driver.append("TSIM = collect(TSTART:Ts:TSTOP);\n");
         driver.append("initial_condition_vector = data_dictionary[\"INITIAL_CONDITION_ARRAY\"];\n");
         driver.append("\n");
 
@@ -198,7 +198,7 @@ public class VLCGJuliaGRNModelDelegate {
         driver.append("fbalances(t,y,ydot) = ");
         driver.append(property_tree.lookupKwateeBalanceFunctionName());
         driver.append("(t,y,ydot,data_dictionary);\n");
-        driver.append("X = Sundials.cvode(fbalances,initial_condition_vector,TSIM);\n");
+        driver.append("X = Sundials.cvode(fbalances,initial_condition_vector,TSIM,reltol=1e-4,abstol=1e-6);\n");
         driver.append("\n");
         driver.append("return (TSIM,X);\n");
 
@@ -297,6 +297,15 @@ public class VLCGJuliaGRNModelDelegate {
             buffer.append("tmp = rate_constant_array[");
             buffer.append(reaction_counter);
             buffer.append("]");
+
+            // Do we have an enzyme?
+            String enzyme_symbol = model_tree.getEnzymeSymbolForSignalTransductionReactionWithName(reaction_name);
+            if (enzyme_symbol.equalsIgnoreCase("[]") == false){
+
+                buffer.append("*(");
+                buffer.append(enzyme_symbol);
+                buffer.append(")");
+            }
 
             // Get the reactants for this reaction -
             if (model_tree.isThisASignalTransductionReaction(reaction_name)){
@@ -507,15 +516,44 @@ public class VLCGJuliaGRNModelDelegate {
             massbalances.append("tau_array = data_dictionary[\"TIME_CONSTANT_ARRAY\"];\n");
             massbalances.append("tmp_vector = S*rate_vector;\n");
             massbalances.append("number_of_states = length(tmp_vector);\n");
-            massbalances.append("for state_index in [1:number_of_states]\n");
-            massbalances.append("\tdxdt_vector[state_index] = tmp_vector[state_index] - maximum_specific_growth_rate*(dilution_selection_matrix[state_index,state_index])*(x[state_index]);\n");
-            massbalances.append("\tdxdt_vector[state_index] = tau_array[state_index]*dxdt_vector[state_index];\n");
+            massbalances.append("for state_index in collect(1:number_of_states)\n");
+            massbalances.append("\tdxdt_vector[state_index] = tau_array[state_index]*(tmp_vector[state_index] - maximum_specific_growth_rate*(dilution_selection_matrix[state_index,state_index])*(x[state_index]));\n");
             massbalances.append("end");
-            massbalances.append("\n");
         }
+
+        // Correct external species -
+        massbalances.append("\n\n");
+        massbalances.append("# Correct extracellular species - \n");
+        massbalances.append("cellmass = Cellmass(t,x,data_dictionary);\n");
+
+        Vector <String> external_species = model_tree.getExternalSpeciesSymbolsFromGRNModel();
+        for (String species_symbol : external_species){
+
+            // lookup the index -
+            int species_index = model_tree.getIndexOfSpeciesWithSymbol(species_symbol);
+            if (species_index != -1){
+
+                massbalances.append("dxdt_vector[");
+                massbalances.append(species_index+1);
+                massbalances.append("] = cellmass*");
+                massbalances.append("dxdt_vector[");
+                massbalances.append(species_index+1);
+                massbalances.append("];\t#\t");
+                massbalances.append(species_symbol);
+                massbalances.append("\n");
+            }
+        }
+
 
         // last line -
         massbalances.append("\n");
+        massbalances.append("end\n");
+        massbalances.append("\n");
+        massbalances.append("function Cellmass(t,x,data_dictionary)\n");
+        massbalances.append("\t# User function to calculate the cellmass abundance - \n");
+        massbalances.append("\t# Default behavior is cellmass = 1.0\n");
+        massbalances.append("\tcellmass = 1.0;\n");
+        massbalances.append("\treturn cellmass;\n");
         massbalances.append("end\n");
 
         // return the buffer -
@@ -577,6 +615,7 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("(NSPECIES,NREACTIONS) = size(S);\n");
 
         // How many genes do we have in the model?
+        buffer.append("\n");
         buffer.append("# How many genes do we have in the model? - \n");
         buffer.append("number_of_genes = ");
         buffer.append(model_tree.getNumberOfGenesFromGRNModelTree());
@@ -912,7 +951,7 @@ public class VLCGJuliaGRNModelDelegate {
                         buffer.append("if (");
                         buffer.append(actor);
                         buffer.append("<EPSILON);\n");
-                        buffer.append("\tpush!(transfer_function_vector,0.0);\n");
+                        buffer.append("\tpush!(transfer_function_vector,1.0);\n");
                         buffer.append("else\n");
                         buffer.append("\tpush!(transfer_function_vector,1.0 - (control_parameter_array[");
                         buffer.append(control_index);

@@ -10,9 +10,7 @@ import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.StringReader;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -139,7 +137,27 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         document_builder = factory.newDocumentBuilder();
         model_tree = document_builder.parse(new InputSource(new StringReader(xml_buffer.toString())));
 
-        System.out.println("tree - "+xml_buffer.toString());
+        // write the tree to the debug folder -
+        // Get the debug path -
+        String debug_path = _transformation_properties_tree.lookupKwateeDebugPath();
+        if (debug_path != null){
+
+            // ok, we have a path - is this path legit?
+            File oFile = new File(debug_path);
+            if (oFile.isDirectory()){
+
+                // Create new path -
+                String fully_qualified_model_path = debug_path+"GRN_AST.xml";
+
+                // Write the AST file -
+                File ast_file = new File(fully_qualified_model_path);
+                BufferedWriter writer = new BufferedWriter(new FileWriter(ast_file));
+
+                // Write buffer to file system and close writer
+                writer.write(xml_buffer.toString());
+                writer.close();
+            }
+        }
 
         // return the wrapped model_tree -
         VLCGGRNModelTreeWrapper model_wrapper = new VLCGGRNModelTreeWrapper(model_tree);
@@ -254,7 +272,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // write the buffer line -
             buffer.append("\t\t\t");
-            buffer.append("<reaction name=\"degradation_");
+            buffer.append("<reaction enzyme_symbol=\"[]\" name=\"degradation_");
             buffer.append(mrna_symbol);
             buffer.append("\" default_rate_constant=\"0.1\"");
             buffer.append(" raw_reaction_string=\"");
@@ -306,6 +324,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // Get the reaction data -
             String reaction_name = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_NAME);
+            String reaction_enzyme_symbol = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_ENZYME);
             String reverse_flag = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REVERSE);
             String raw_string = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_RAW_STRING);
             Vector<VLCGSignalTransductionProteinModel> reactant_model_vector = (Vector)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REACTANT_VECTOR);
@@ -318,6 +337,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
             buffer.append("\" default_rate_constant=\"1.0\"");
             buffer.append(" raw_reaction_string=\"");
             buffer.append(raw_string);
+            buffer.append("\" enzyme_symbol=\"");
+            buffer.append(reaction_enzyme_symbol);
             buffer.append("\">\n");
             buffer.append("\t\t\t\t");
             buffer.append("<listOfReactants>\n");
@@ -373,6 +394,8 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 buffer.append("\t\t\t");
                 buffer.append("<reaction name=\"");
                 buffer.append(reaction_name+"_reverse");
+                buffer.append("\" enzyme_symbol=\"");
+                buffer.append(reaction_enzyme_symbol);
                 buffer.append("\" raw_reaction_string=\"");
 
                 // we need to redo the raw string ..
@@ -486,7 +509,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // write the buffer line -
             buffer.append("\t\t\t");
-            buffer.append("<translation_reaction mrna_symbol=\"");
+            buffer.append("<translation_reaction enzyme_symbol=\"[]\" mrna_symbol=\"");
             buffer.append(model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_MRNA_SYMBOL));
             buffer.append("\" protein_symbol=\"");
             buffer.append(model_component.getModelComponent(VLCGTranslationReactionModel.TRANSLATION_PROTEIN_SYMBOL));
@@ -519,7 +542,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // write the buffer line -
             buffer.append("\t\t\t");
-            buffer.append("<gene_expression_reaction gene_symbol=\"");
+            buffer.append("<gene_expression_reaction enzyme_symbol=\"[]\" gene_symbol=\"");
             buffer.append(model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_GENE_SYMBOL));
             buffer.append("\" mrna_symbol=\"");
             buffer.append(model_component.getModelComponent(VLCGGeneExpressionReactionModel.GENE_EXPRESSION_MRNA_SYMBOL));
@@ -551,6 +574,12 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
 
             // Get the model component -
             VLCGGRNModelComponent model_component = protein_iterator.next();
+
+            // Add the enzyme if we have one?
+            String enzyme_symbol = (String)model_component.getModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_ENZYME);
+            if (enzyme_symbol.equalsIgnoreCase("[]") == false) {
+                symbol_vector.addElement(enzyme_symbol);
+            }
 
             // go through the products and reactants -
             // Reactants -
@@ -598,7 +627,14 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 // build the record -
                 buffer.append("\t\t<species id=\"");
                 buffer.append(protein_symbol);
-                buffer.append("\" species_type=\"PROTEIN\" initial_amount=\"0.0\"/>\n");
+
+                if (protein_symbol.contains("_xt")){
+                    buffer.append("\" species_type=\"PROTEIN\" species_compartment=\"external\" initial_amount=\"0.0\"/>\n");
+                }
+                else {
+                    buffer.append("\" species_type=\"PROTEIN\" species_compartment=\"internal\" initial_amount=\"0.0\"/>\n");
+                }
+
 
                 // add -
                 tmp_species_vector.addElement(protein_symbol);
@@ -625,7 +661,13 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 // build the record -
                 buffer.append("\t\t<species id=\"");
                 buffer.append(translation_product_symbol);
-                buffer.append("\" species_type=\"PROTEIN\" initial_amount=\"0.0\"/>\n");
+
+                if (translation_product_symbol.contains("_xt")){
+                    buffer.append("\" species_type=\"PROTEIN\" species_compartment=\"external\" initial_amount=\"0.0\"/>\n");
+                }
+                else {
+                    buffer.append("\" species_type=\"PROTEIN\" species_compartment=\"internal\" initial_amount=\"0.0\"/>\n");
+                }
 
                 // add -
                 tmp_species_vector.addElement(translation_product_symbol);
@@ -665,7 +707,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 // create the buffer entry -
                 buffer.append("\t\t<species id=\"");
                 buffer.append(gene_symbol);
-                buffer.append("\" species_type=\"MRNA\" initial_amount=\"0.0\"/>\n");
+                buffer.append("\" species_type=\"MRNA\" species_compartment=\"internal\" initial_amount=\"0.0\"/>\n");
 
                 // cache the symbol -
                 _species_vector.addElement(gene_symbol);
@@ -703,7 +745,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 // create the buffer entry -
                 buffer.append("\t\t<species id=\"");
                 buffer.append(gene_symbol);
-                buffer.append("\" species_type=\"GENE\" initial_amount=\"1.0\"/>\n");
+                buffer.append("\" species_type=\"GENE\" species_compartment=\"internal\" initial_amount=\"1.0\"/>\n");
 
                 // cache the symbol -
                 _species_vector.addElement(gene_symbol);
