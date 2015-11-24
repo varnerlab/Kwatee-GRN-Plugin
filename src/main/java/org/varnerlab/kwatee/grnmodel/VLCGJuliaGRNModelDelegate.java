@@ -549,6 +549,9 @@ public class VLCGJuliaGRNModelDelegate {
         massbalances.append("\n");
         massbalances.append("end\n");
         massbalances.append("\n");
+        massbalances.append("# ---------------------------------------------------------------------- #\n");
+        massbalances.append("# User defined cellmass function - \n");
+        massbalances.append("# ---------------------------------------------------------------------- #\n");
         massbalances.append("function Cellmass(t,x,data_dictionary)\n");
         massbalances.append("\t# User function to calculate the cellmass abundance - \n");
         massbalances.append("\t# Default behavior is cellmass = 1.0\n");
