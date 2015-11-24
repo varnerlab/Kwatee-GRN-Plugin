@@ -510,10 +510,14 @@ public class VLCGJuliaGRNModelDelegate {
 
             // balance are encoded as matrix vector product -
             massbalances.append("# Encode the balance equations as a matrix vector product - \n");
+            massbalances.append("# Get the required matricies - \n");
             massbalances.append("maximum_specific_growth_rate = data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"];\n");
             massbalances.append("S = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
             massbalances.append("dilution_selection_matrix = data_dictionary[\"DILUTION_SELECTION_MATRIX\"];\n");
             massbalances.append("tau_array = data_dictionary[\"TIME_CONSTANT_ARRAY\"];\n");
+            massbalances.append("\n");
+
+            massbalances.append("# Calculate and correct dxdt - \n");
             massbalances.append("tmp_vector = S*rate_vector;\n");
             massbalances.append("number_of_states = length(tmp_vector);\n");
             massbalances.append("for state_index in collect(1:number_of_states)\n");

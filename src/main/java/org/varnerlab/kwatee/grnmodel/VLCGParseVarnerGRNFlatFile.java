@@ -6,10 +6,21 @@ import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
 import org.varnerlab.kwatee.grnmodel.models.*;
 import org.varnerlab.kwatee.grnmodel.parserdelegates.*;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.util.*;
 
@@ -45,6 +56,11 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
     private final String _package_name_parser_delegate = "org.varnerlab.kwatee.grnmodel.parserdelegates";
     private Hashtable<Class,Vector<VLCGGRNModelComponent>> _model_component_table = new Hashtable();
     private Vector<String> _species_vector = new Vector<String>();
+
+    // Not sure we should be doing this here ...
+    private XPathFactory _xpath_factory = XPathFactory.newInstance();
+    private XPath _xpath = _xpath_factory.newXPath();
+
 
     @Override
     public void setPropertiesTree(VLCGTransformationPropertyTree properties_tree) {
@@ -137,6 +153,9 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         document_builder = factory.newDocumentBuilder();
         model_tree = document_builder.parse(new InputSource(new StringReader(xml_buffer.toString())));
 
+        // reorder the species?
+        _orderMySpeciesListInModelTree(model_tree);
+
         // write the tree to the debug folder -
         // Get the debug path -
         String debug_path = _transformation_properties_tree.lookupKwateeDebugPath();
@@ -153,8 +172,18 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
                 File ast_file = new File(fully_qualified_model_path);
                 BufferedWriter writer = new BufferedWriter(new FileWriter(ast_file));
 
+                Transformer transformer = TransformerFactory.newInstance().newTransformer();
+                transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+                transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+                transformer.setOutputProperty(OutputKeys.STANDALONE,"yes");
+                StreamResult result = new StreamResult(new StringWriter());
+                DOMSource source = new DOMSource(model_tree);
+                transformer.transform(source, result);
+
+                String local_xmlString = result.getWriter().toString();
+
                 // Write buffer to file system and close writer
-                writer.write(xml_buffer.toString());
+                writer.write(local_xmlString);
                 writer.close();
             }
         }
@@ -164,7 +193,67 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         return model_wrapper;
     }
 
-    // private helper methods -
+    private void _orderMySpeciesListInModelTree(Document model_tree) throws Exception {
+
+        // method variables -
+        Vector<String> species_order_vector = new Vector<String>();
+
+        // Get the path to the order file -
+        String path_to_order_file = _transformation_properties_tree.lookupKwateeSpeciesOrderFilePath();
+        if (path_to_order_file == null){
+            return;
+        }
+
+        // Is there a file at the end of this rainbow?
+        File order_file = new File(path_to_order_file);
+        if (order_file.exists() && !order_file.isDirectory()) {
+
+            // ok - we have the order file, load that data into a temp vector -
+            BufferedReader inReader = new BufferedReader(new FileReader(order_file));
+            String record = null;
+            while ((record = inReader.readLine()) != null) {
+
+                species_order_vector.addElement(record);
+            }
+
+            // close the reader -
+            inReader.close();
+
+            // Cache for orphan nodes ...
+            ArrayList<Node> node_cache = new ArrayList<Node>();
+
+            // ok, we have the species list, iterate through and grab specific nodes (cache them)
+            for (String symbol : species_order_vector){
+
+                // remove node from tree -
+                String xpath_symbol_query = ".//species[@id=\""+symbol+"\"]";
+                NodeList nodeList = _lookupPropertyCollectionFromTreeUsingXPath(xpath_symbol_query,model_tree);
+                if (nodeList != null && nodeList.getLength()>0){
+
+                    Node species_node = nodeList.item(0);
+
+                    // Cache the selected node -
+                    node_cache.add(species_node);
+
+                    // Remove selected node from tree -
+                    species_node.getParentNode().removeChild(species_node);
+                }
+            }
+
+            // Now that we have the node cache, add these cached nodes back to the model_tree at the end of the species list -
+            String xpath_species_list_node = "./GRNModel/listOfSpecies";
+            Node list_of_species = _lookupPropertyCollectionFromTreeUsingXPath(xpath_species_list_node,model_tree).item(0);
+            for (Node node: node_cache){
+
+                // add this node back to the parent -
+                list_of_species.appendChild(node);
+            }
+        }
+        else {
+            throw new Exception("File at path "+path_to_order_file+" was not found?");
+        }
+    }
+
     private String _addListOfSignalTransductionControlTermsFromModelTableToModelTree() throws Exception {
 
         // Method variables -
@@ -817,4 +906,27 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         // close -
         inReader.close();
     }
+
+    private NodeList _lookupPropertyCollectionFromTreeUsingXPath(String xpath_string, Document tree) throws Exception {
+
+        if (xpath_string == null) {
+            throw new Exception("Null xpath in property lookup call.");
+        }
+
+        // Exceute the xpath -
+        NodeList node_list = null;
+        try {
+
+            node_list = (NodeList) _xpath.evaluate(xpath_string, tree, XPathConstants.NODESET);
+
+        }
+        catch (Exception error) {
+            error.printStackTrace();
+            System.out.println("ERROR: Property lookup failed. The following XPath "+xpath_string+" resulted in an error - "+error.toString());
+        }
+
+        // return -
+        return node_list;
+    }
+
 }
