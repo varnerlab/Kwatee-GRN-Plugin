@@ -5,6 +5,7 @@ import org.varnerlab.kwatee.foundation.VLCGTransformationPropertyTree;
 import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleControlLogicModel;
 import org.varnerlab.kwatee.grnmodel.models.VLCGSimpleSpeciesModel;
 
+import java.io.StringReader;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Iterator;
@@ -746,27 +747,56 @@ public class VLCGJuliaGRNModelDelegate {
                     VLCGSimpleControlLogicModel control_model = control_iterator.next();
                     String comment = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_COMMENT);
                     String header_comment = model_tree.buildControlCommentStringForControlConnectionWithName((String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_NAME));
+                    String control_type = (String)control_model.getModelComponent(VLCGSimpleControlLogicModel.CONTROL_TYPE);
 
-                    // write the gain line -
-                    buffer.append("# ");
-                    buffer.append(header_comment);
-                    buffer.append("\n");
-                    buffer.append("control_parameter_array[");
-                    buffer.append(control_index);
-                    buffer.append(",1] = 0.1;\t#\t");
-                    buffer.append(control_index);
-                    buffer.append(" Gain: \t");
-                    buffer.append(comment);
-                    buffer.append("\n");
 
-                    // write the order line -
-                    buffer.append("control_parameter_array[");
-                    buffer.append(control_index);
-                    buffer.append(",2] = 1.0;\t#\t");
-                    buffer.append(control_index);
-                    buffer.append(" Order: \t");
-                    buffer.append(comment);
-                    buffer.append("\n\n");
+                    if (control_type.contains("threshold")){
+
+                        // write the gain line -
+                        buffer.append("# ");
+                        buffer.append(header_comment);
+                        buffer.append("\n");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1] = 0.1;\t#\t");
+                        buffer.append(control_index);
+                        buffer.append(" Threshold: \t");
+                        buffer.append(comment);
+                        buffer.append("\n");
+
+                        // write the order line -
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2] = 1.0;\t#\t");
+                        buffer.append(control_index);
+                        buffer.append(" Gain: \t");
+                        buffer.append(comment);
+                        buffer.append("\n\n");
+                    }
+                    else {
+
+                        // write the gain line -
+                        buffer.append("# ");
+                        buffer.append(header_comment);
+                        buffer.append("\n");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",1] = 0.1;\t#\t");
+                        buffer.append(control_index);
+                        buffer.append(" Gain: \t");
+                        buffer.append(comment);
+                        buffer.append("\n");
+
+                        // write the order line -
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2] = 1.0;\t#\t");
+                        buffer.append(control_index);
+                        buffer.append(" Order: \t");
+                        buffer.append(comment);
+                        buffer.append("\n\n");
+                    }
+
 
                     // update counter -
                     control_index++;
@@ -928,6 +958,40 @@ public class VLCGJuliaGRNModelDelegate {
                         buffer.append(")^control_parameter_array[");
                         buffer.append(control_index);
                         buffer.append(",2]));\n");
+                        buffer.append("end\n");
+                        buffer.append("\n");
+                    }
+                    else if (type.equalsIgnoreCase("positive_threshold")) {
+
+                        // encode 0 -> 1*gain if actor > threshold
+                        buffer.append("if (");
+                        buffer.append(actor);
+                        buffer.append("> control_parameter_array[\n");
+                        buffer.append(control_index);
+                        buffer.append(",1])\n");
+                        buffer.append("\tpush!(transfer_function_vector,");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]);\n");
+                        buffer.append("else\n");
+                        buffer.append("\tpush!(transfer_function_vector,0.0);\n");
+                        buffer.append("end\n");
+                        buffer.append("\n");
+                    }
+                    else if (type.equalsIgnoreCase("negative_threshold")) {
+
+                        // encode gain -> 0 if actor > threshold
+                        buffer.append("if (");
+                        buffer.append(actor);
+                        buffer.append("> control_parameter_array[\n");
+                        buffer.append(control_index);
+                        buffer.append(",1])\n");
+                        buffer.append("\tpush!(transfer_function_vector,0.0);\n");
+                        buffer.append("else\n");
+                        buffer.append("\tpush!(transfer_function_vector,");
+                        buffer.append("control_parameter_array[");
+                        buffer.append(control_index);
+                        buffer.append(",2]);\n");
                         buffer.append("end\n");
                         buffer.append("\n");
                     }
