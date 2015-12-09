@@ -59,24 +59,29 @@ public class VLCGSignalTransductionParserDelegate implements VLCGParserHandlerDe
             else if (counter == 2){
 
                 String strTmp = ((String)token).replace("-", "_");
-                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REACTANTS,strTmp);
+                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_ENZYME,strTmp);
             }
             else if (counter == 3){
 
                 String strTmp = ((String)token).replace("-", "_");
-                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_PRODUCTS,strTmp);
+                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REACTANTS,strTmp);
             }
             else if (counter == 4){
 
-                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REVERSE,token);
+                String strTmp = ((String)token).replace("-", "_");
+                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_PRODUCTS,strTmp);
             }
             else if (counter == 5){
+
+                _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_REVERSE,token);
+            }
+            else if (counter == 6){
                 // remove the ;
                 String strTmp = token.substring(0,token.length() - 1);
                 _model.setModelComponent(VLCGSignalTransductionReactionModel.SIGNAL_TRANSDUCTION_REACTION_FORWARD,strTmp);
             }
             else {
-                throw new Exception(this.getClass().toString() + " does not support > five tokens. Incorrect format for line: "+line);
+                throw new Exception(this.getClass().toString() + " does not support > six tokens. Incorrect format for line: "+line);
             }
 
             // update the counter -
@@ -92,6 +97,7 @@ public class VLCGSignalTransductionParserDelegate implements VLCGParserHandlerDe
         // method variables -
         int counter = 1;
         StringBuffer buffer = new StringBuffer();
+        String enzyme_symbol = "[]";
 
         // split around the ','
         StringTokenizer stringTokenizer = new StringTokenizer(line,",");
@@ -105,10 +111,15 @@ public class VLCGSignalTransductionParserDelegate implements VLCGParserHandlerDe
                 buffer.append(": ");
             }
             else if (counter == 2){
-                buffer.append(token);
-                buffer.append(" = ");
+                enzyme_symbol = token;
             }
             else if (counter == 3){
+                buffer.append(token);
+                buffer.append(" =(");
+                buffer.append(enzyme_symbol);
+                buffer.append(")=> ");
+            }
+            else if (counter == 4){
                 buffer.append(token);
             }
 

@@ -97,6 +97,23 @@ public class VLCGGRNModelTreeWrapper {
         return number_of_reactions;
     }
 
+
+    public String getEnzymeSymbolForSignalTransductionReactionWithName(String reaction_name) throws Exception {
+
+        // method variables -
+        String enyzme_symbol = "[]";
+        String local_enzyme_symbol;
+
+        // Setup xpath -
+        String enzyme_xpath = ".//reaction[@name=\""+reaction_name+"\"]/@enzyme_symbol";
+        if (_lookupPropertyValueFromTreeUsingXPath(enzyme_xpath) != null){
+            return _lookupPropertyValueFromTreeUsingXPath(enzyme_xpath);
+        }
+
+        // return the symbol -
+        return enyzme_symbol;
+    }
+
     public Vector<VLCGSimpleSpeciesModel> getReactantsForReactionWithName(String reaction_name) throws Exception {
 
         // Method variables -
@@ -549,6 +566,41 @@ public class VLCGGRNModelTreeWrapper {
         return control_vector;
     }
 
+    public int getIndexOfSpeciesWithSymbol(String species_symbol) throws Exception {
+
+        // method atributes -
+        int species_index = -1;
+
+        // Lookup -
+        Vector species_symbol_vector = getSpeciesSymbolsFromGRNModel();
+        if (species_symbol_vector.contains(species_symbol)){
+            return species_symbol_vector.indexOf(species_symbol);
+        }
+
+        return species_index;
+    }
+
+    public Vector<String> getExternalSpeciesSymbolsFromGRNModel() throws Exception {
+
+        // method variables -
+        Vector<String> species_vector = new Vector<String>();
+
+        // Get the species from the model list -
+        String xpath_string = ".//species[@species_compartment=\"external\"]/@id";
+        NodeList node_list = _lookupPropertyCollectionFromTreeUsingXPath(xpath_string);
+
+        int number_of_nodes = node_list.getLength();
+        for (int node_index = 0;node_index<number_of_nodes;node_index++){
+
+            // Grab the node value -
+            String node_value = node_list.item(node_index).getNodeValue();
+            species_vector.addElement(node_value);
+        }
+
+        // return -
+        return species_vector;
+    }
+
     public Vector<String> getSpeciesSymbolsFromGRNModel() throws Exception {
 
         // method variables -
@@ -653,7 +705,7 @@ public class VLCGGRNModelTreeWrapper {
 
     /**
      * Return the string value obtained from executing the XPath query passed in as an argument
-     * @param String xpath_string
+     * @param xpath_string
      * @return String - get property from uxml tree by executing string in strXPath
      */
     private String _lookupPropertyValueFromTreeUsingXPath(String xpath_string) throws Exception {
@@ -664,11 +716,18 @@ public class VLCGGRNModelTreeWrapper {
         }
 
         // Method attributes -
-        String property_string = "";
+        String property_string = null;
 
         try {
             Node propNode = (Node) _xpath.evaluate(xpath_string, _model_tree, XPathConstants.NODE);
-            property_string = propNode.getNodeValue();
+            if (propNode != null){
+
+                property_string = propNode.getNodeValue();
+            }
+            else {
+
+                property_string = null;
+            }
         }
         catch (Exception error)
         {
