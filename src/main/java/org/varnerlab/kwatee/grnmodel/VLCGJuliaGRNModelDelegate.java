@@ -514,7 +514,7 @@ public class VLCGJuliaGRNModelDelegate {
             massbalances.append("# Get the required matricies - \n");
             massbalances.append("maximum_specific_growth_rate = data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"];\n");
             massbalances.append("S = data_dictionary[\"STOICHIOMETRIC_MATRIX\"];\n");
-            massbalances.append("dilution_selection_matrix = data_dictionary[\"DILUTION_SELECTION_MATRIX\"];\n");
+            massbalances.append("dilution_selection_array = data_dictionary[\"DILUTION_SELECTION_ARRAY\"];\n");
             massbalances.append("tau_array = data_dictionary[\"TIME_CONSTANT_ARRAY\"];\n");
             massbalances.append("\n");
 
@@ -522,7 +522,7 @@ public class VLCGJuliaGRNModelDelegate {
             massbalances.append("tmp_vector = S*rate_vector;\n");
             massbalances.append("number_of_states = length(tmp_vector);\n");
             massbalances.append("for state_index in collect(1:number_of_states)\n");
-            massbalances.append("\tdxdt_vector[state_index] = tau_array[state_index]*(tmp_vector[state_index] - maximum_specific_growth_rate*(dilution_selection_matrix[state_index,state_index])*(x[state_index]));\n");
+            massbalances.append("\tdxdt_vector[state_index] = tau_array[state_index]*(tmp_vector[state_index] - maximum_specific_growth_rate*dilution_selection_array[state_index]*(x[state_index]));\n");
             massbalances.append("end");
         }
 
@@ -850,11 +850,34 @@ public class VLCGJuliaGRNModelDelegate {
             }
         }
 
-        //buffer.append("\n");
+
+        // setup dilution selection array -
+        buffer.append("\n");
+        buffer.append("# Dilution selection array -\n");
+        buffer.append("dilution_selection_array = ones(Int,NSPECIES)\n");
+        int species_index = 1;
+        for (String species_symbol:species_symbol_vector) {
+
+            // what kind of species is this?
+            String species_type = model_tree.getSpeciesTypeForSpeciesWithName(species_symbol);
+
+            if (species_type.equalsIgnoreCase("GENE")){
+
+                buffer.append("dilution_selection_array[");
+                buffer.append(species_index);
+                buffer.append("] = 0.0;\t#\t");
+                buffer.append(species_symbol);
+                buffer.append("\n");
+            }
+
+            species_index++;
+        }
+
+        buffer.append("\n");
         buffer.append("# Set the maximum specific growth rate - \n");
         buffer.append("maximum_specific_growth_rate = 0.5;\n");
-        buffer.append("dilution_selection_matrix = eye(NSPECIES);\n");
-        buffer.append("dilution_selection_matrix[1:number_of_genes,1:number_of_genes] = 0.0;\n");
+
+
 
         buffer.append("\n");
         buffer.append("# ---------------------------- DO NOT EDIT BELOW THIS LINE -------------------------- #\n");
@@ -866,7 +889,7 @@ public class VLCGJuliaGRNModelDelegate {
         buffer.append("data_dictionary[\"TIME_CONSTANT_ARRAY\"] = time_constant_array;\n");
         buffer.append("data_dictionary[\"CONTROL_PARAMETER_ARRAY\"] = control_parameter_array;\n");
         buffer.append("data_dictionary[\"MAXIMUM_SPECIFIC_GROWTH_RATE\"] = maximum_specific_growth_rate;\n");
-        buffer.append("data_dictionary[\"DILUTION_SELECTION_MATRIX\"] = dilution_selection_matrix;\n");
+        buffer.append("data_dictionary[\"DILUTION_SELECTION_ARRAY\"] = dilution_selection_array;\n");
         buffer.append("# ----------------------------------------------------------------------------------- #\n");
 
         // last line -
