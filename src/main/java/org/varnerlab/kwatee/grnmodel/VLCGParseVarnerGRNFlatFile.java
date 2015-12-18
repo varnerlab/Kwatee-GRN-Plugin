@@ -153,8 +153,13 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         document_builder = factory.newDocumentBuilder();
         model_tree = document_builder.parse(new InputSource(new StringReader(xml_buffer.toString())));
 
-        // reorder the species?
-        _orderMySpeciesListInModelTree(model_tree);
+        // Get the path to the order file -
+        String path_to_order_file = _transformation_properties_tree.lookupKwateeSpeciesOrderFilePath();
+        if (path_to_order_file != null){
+
+            // reorder the species?
+            _orderMySpeciesListInModelTree(model_tree, path_to_order_file);
+        }
 
         // write the tree to the debug folder -
         // Get the debug path -
@@ -193,16 +198,10 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         return model_wrapper;
     }
 
-    private void _orderMySpeciesListInModelTree(Document model_tree) throws Exception {
+    private void _orderMySpeciesListInModelTree(Document model_tree, String path_to_order_file) throws Exception {
 
         // method variables -
         Vector<String> species_order_vector = new Vector<String>();
-
-        // Get the path to the order file -
-        String path_to_order_file = _transformation_properties_tree.lookupKwateeSpeciesOrderFilePath();
-        if (path_to_order_file == null){
-            return;
-        }
 
         // Is there a file at the end of this rainbow?
         File order_file = new File(path_to_order_file);
