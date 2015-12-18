@@ -153,7 +153,7 @@ public class VLCGParseVarnerGRNFlatFile implements VLCGInputHandler {
         document_builder = factory.newDocumentBuilder();
         model_tree = document_builder.parse(new InputSource(new StringReader(xml_buffer.toString())));
 
-        // Get the path to the order file -
+        // Get the path to the order file - reorder if we have an order file
         String path_to_order_file = _transformation_properties_tree.lookupKwateeSpeciesOrderFilePath();
         if (path_to_order_file != null){
 
